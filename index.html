@@ -1,0 +1,60 @@
+<head>
+  <meta charset="UTF-8" />
+  <title>UI Final</title>
+
+  <!-- ✅ 手機版 RWD 必備 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ✅ 連結外部 CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- ✅ Three.js canvas 會自動插入，不需要手動寫 -->
+
+  <!-- ✅ 左下角模型切換按鈕 -->
+  <div id="ui-bar">
+    <div class="ui-section">
+  <button class="model-btn"
+   data-model="https://dl.dropboxusercontent.com/scl/fi/mvlbu6mcuynvzryx5fq5i/office.glb?rlkey=c7k5mk0h6p6qmkc0i60ywppwa&dl=1">
+  office</button>
+      
+  <button class="model-btn"
+   data-model="https://dl.dropboxusercontent.com/scl/fi/fwj05k0wxy4scm594wp2h/BL-360.glb?rlkey=zx2xmxmrydo2m16azprrs5ko7&dl=1">
+  2ft</button>
+      
+  <button class="model-btn"
+  data-model="https://dl.dropboxusercontent.com/scl/fi/7mg3ql92et9cw9vejup0x/baketest.glb?rlkey=r2a9c7ok47trmjhcvgzxquagh&dl=1">
+  bake</button>
+   </div>
+  </div>
+
+  <!-- ✅ 底部中間 ICON + 滑桿 -->
+  <div id="icon-row">
+    <div class="top-icon">
+      <img src="./icons/icon-cube.svg" class="icon-cube">
+      <input type="range" id="rotateSpeed" min="0" max="0.05" step="0.001" value="0">
+    </div>
+
+    <div class="top-icon">
+      <img src="./icons/icon-light.svg" class="icon-light">
+      <input type="range" id="ambientIntensity" min="0.1" max="2" step="0.1" value="1">
+    </div>
+
+    <div class="top-icon">
+      <img src="./icons/icon-camera.svg" class="icon-camera">
+      <input type="range" id="cameraFov" min="30" max="90" step="1" value="45">
+    </div>
+  </div>
+
+  <!-- ✅ Three.js 主程式 -->
+  <script type="module" src="main.js"></script>
+
+</body>
+
+
+
+
+
+
