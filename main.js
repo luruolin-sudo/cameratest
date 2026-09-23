@@ -285,6 +285,8 @@ let currentModel = null;
 
 let brightnessLevel = 0;
 
+let savedBrightnessLevel = 4;
+
 
 // ======================================================
 // LED 資料
@@ -533,7 +535,7 @@ function buttonFlash(buttonName) {
 
     const geometry =
         new THREE.SphereGeometry(
-            buttonHitRadius * 0.55,
+            buttonHitRadius * 0.7,
             16,
             16
         );
@@ -546,9 +548,11 @@ function buttonFlash(buttonName) {
 
             transparent: true,
 
-            opacity: 0.75,
+            opacity: 1,
 
-            depthWrite: false
+            depthWrite: false,
+
+            depthTest: false
 
         });
 
@@ -563,6 +567,8 @@ function buttonFlash(buttonName) {
     flash.position.copy(
         worldPosition
     );
+
+    flash.renderOrder = 20;
 
 
     scene.add(
@@ -601,12 +607,12 @@ function buttonFlash(buttonName) {
 
 
         flash.scale.setScalar(
-            1 + progress * 0.6
+            1 + progress * 0.9
         );
 
 
         material.opacity =
-            0.75 *
+            1 *
             (1 - progress);
 
 
@@ -918,6 +924,8 @@ function setupRemoteLEDs(model) {
             worldPosition
         );
 
+        ledMesh.visible = false;
+
         ledMesh.renderOrder = 10;
 
 
@@ -1055,7 +1063,7 @@ function setupGroupButtonLEDs(model) {
 
         const offsetX = 0.00;
         const offsetY = 0.00;
-        const offsetZ = -0.02;
+        const offsetZ = -0.015;
 
 
         worldPosition.add(
@@ -1114,6 +1122,8 @@ function setupGroupButtonLEDs(model) {
         ledMesh.position.copy(
             worldPosition
         );
+
+        ledMesh.visible = false;
 
 
         // --------------------------------------------------
@@ -1296,6 +1306,8 @@ function setupGroupFlashLED(model) {
         worldPosition
     );
 
+    ledMesh.visible = false;
+
 
     // --------------------------------------------------
     // PointLight
@@ -1355,6 +1367,10 @@ function flashGroupLED() {
 
     groupButtonFlashLED
         .ledMesh
+        .visible = true;
+
+    groupButtonFlashLED
+        .ledMesh
         .material
         .emissiveIntensity = 20.0;
 
@@ -1381,6 +1397,10 @@ function flashGroupLED() {
                     return;
                 }
 
+
+                groupButtonFlashLED
+                    .ledMesh
+                    .visible = false;
 
                 groupButtonFlashLED
                     .ledMesh
@@ -1428,6 +1448,35 @@ function updateLEDs() {
                     ? 0.45
                     : 0;
 
+            if (!shouldBeOn) {
+
+                ledInfo.currentIntensity =
+                    0;
+
+                ledInfo.currentLightIntensity =
+                    0;
+
+                if (ledInfo.ledMesh) {
+
+                    ledInfo.ledMesh.visible =
+                        false;
+
+                    ledInfo.ledMesh
+                        .material
+                        .emissiveIntensity =
+                            0;
+
+                }
+
+                if (ledInfo.pointLight) {
+
+                    ledInfo.pointLight.intensity =
+                        0;
+
+                }
+
+            }
+
         }
     );
 
@@ -1466,6 +1515,9 @@ function animateLEDs() {
             // 套用 LED
 
             if (ledInfo.ledMesh) {
+
+                ledInfo.ledMesh.visible =
+                    ledInfo.currentIntensity > 0.01;
 
                 ledInfo.ledMesh
                     .material
@@ -1513,6 +1565,9 @@ function animateLEDs() {
 
 
             if (ledInfo.ledMesh) {
+
+                ledInfo.ledMesh.visible =
+                    ledInfo.currentIntensity > 0.01;
 
                 ledInfo.ledMesh
                     .material
@@ -1663,11 +1718,15 @@ function handleButton(
             brightnessLevel > 0
         ) {
 
+            savedBrightnessLevel =
+                brightnessLevel;
+
             brightnessLevel = 0;
 
         } else {
 
-            brightnessLevel = 4;
+            brightnessLevel =
+                savedBrightnessLevel;
 
         }
 
@@ -1695,11 +1754,26 @@ function handleButton(
         "Button_Brighten"
     ) {
 
-        brightnessLevel =
-            Math.min(
-                brightnessLevel + 1,
-                8
-            );
+        if (brightnessLevel > 0) {
+
+            brightnessLevel =
+                Math.min(
+                    brightnessLevel + 1,
+                    8
+                );
+
+            savedBrightnessLevel =
+                brightnessLevel;
+
+        } else {
+
+            savedBrightnessLevel =
+                Math.min(
+                    savedBrightnessLevel + 1,
+                    8
+                );
+
+        }
 
 
         updateLEDs();
@@ -1725,11 +1799,26 @@ function handleButton(
         "Button_Dim"
     ) {
 
-        brightnessLevel =
-            Math.max(
-                brightnessLevel - 1,
-                0
-            );
+        if (brightnessLevel > 0) {
+
+            brightnessLevel =
+                Math.max(
+                    brightnessLevel - 1,
+                    1
+                );
+
+            savedBrightnessLevel =
+                brightnessLevel;
+
+        } else {
+
+            savedBrightnessLevel =
+                Math.max(
+                    savedBrightnessLevel - 1,
+                    1
+                );
+
+        }
 
 
         updateLEDs();
@@ -1816,6 +1905,9 @@ function handleButton(
             ledInfo.pointLight
                 .intensity =
                     lightIntensity;
+
+            ledInfo.ledMesh.visible =
+                ledInfo.isOn;
 
 
         }
