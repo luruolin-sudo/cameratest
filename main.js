@@ -325,6 +325,70 @@ let buttonHitRadius = 0.04;
 let ledRadius = 0.012;
 
 
+function createGlowSprite(color, size) {
+
+    const canvas =
+        document.createElement("canvas");
+
+    canvas.width = 64;
+    canvas.height = 64;
+
+    const context =
+        canvas.getContext("2d");
+
+    const gradient =
+        context.createRadialGradient(
+            32,
+            32,
+            0,
+            32,
+            32,
+            32
+        );
+
+    const colorObject =
+        new THREE.Color(color);
+
+    const colorStyle =
+        `rgb(${Math.round(colorObject.r * 255)}, ${Math.round(colorObject.g * 255)}, ${Math.round(colorObject.b * 255)})`;
+
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+    gradient.addColorStop(0.2, `${colorStyle.replace("rgb", "rgba").replace(")", ", 0.75)")}`);
+    gradient.addColorStop(1, `${colorStyle.replace("rgb", "rgba").replace(")", ", 0)")}`);
+
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+
+    const texture =
+        new THREE.CanvasTexture(canvas);
+
+    const material =
+        new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            depthTest: true,
+            blending: THREE.AdditiveBlending
+        });
+
+    const sprite =
+        new THREE.Sprite(material);
+
+    sprite.scale.set(
+        size,
+        size,
+        1
+    );
+
+    sprite.visible = false;
+    sprite.renderOrder = 1;
+
+    return sprite;
+
+}
+
+
 // ======================================================
 // 建立 Button 點擊區域
 // ======================================================
@@ -664,6 +728,17 @@ function clearRemoteLEDs() {
 
             }
 
+            if (ledInfo.glowSprite) {
+
+                scene.remove(
+                    ledInfo.glowSprite
+                );
+
+                ledInfo.glowSprite.material.map.dispose();
+                ledInfo.glowSprite.material.dispose();
+
+            }
+
         }
     );
 
@@ -706,6 +781,17 @@ function clearGroupLEDs() {
 
             }
 
+            if (ledInfo.glowSprite) {
+
+                scene.remove(
+                    ledInfo.glowSprite
+                );
+
+                ledInfo.glowSprite.material.map.dispose();
+                ledInfo.glowSprite.material.dispose();
+
+            }
+
         }
     );
 
@@ -744,6 +830,17 @@ function clearGroupLEDs() {
             scene.remove(
                 groupButtonFlashLED.pointLight
             );
+
+        }
+
+        if (groupButtonFlashLED.glowSprite) {
+
+            scene.remove(
+                groupButtonFlashLED.glowSprite
+            );
+
+            groupButtonFlashLED.glowSprite.material.map.dispose();
+            groupButtonFlashLED.glowSprite.material.dispose();
 
         }
 
@@ -905,10 +1002,10 @@ function setupRemoteLEDs(model) {
                         0,
 
                     depthWrite:
-                        false,
+                        true,
 
                     depthTest:
-                        false
+                        true
 
             });
 
@@ -926,7 +1023,17 @@ function setupRemoteLEDs(model) {
 
         ledMesh.visible = false;
 
-        ledMesh.renderOrder = 10;
+        ledMesh.renderOrder = 0;
+
+        const glowSprite =
+            createGlowSprite(
+                lightColor,
+                ledSize * 4
+            );
+
+        glowSprite.position.copy(
+            worldPosition
+        );
 
 
         // --------------------------------------------------
@@ -952,6 +1059,10 @@ function setupRemoteLEDs(model) {
         );
 
         scene.add(
+            glowSprite
+        );
+
+        scene.add(
             pointLight
         );
 
@@ -970,6 +1081,9 @@ function setupRemoteLEDs(model) {
 
             ledMesh:
                 ledMesh,
+
+            glowSprite:
+                glowSprite,
 
             pointLight:
                 pointLight,
@@ -1125,6 +1239,16 @@ function setupGroupButtonLEDs(model) {
 
         ledMesh.visible = false;
 
+        const glowSprite =
+            createGlowSprite(
+                lightColor,
+                ledSize * 4
+            );
+
+        glowSprite.position.copy(
+            worldPosition
+        );
+
 
         // --------------------------------------------------
         // PointLight
@@ -1149,6 +1273,10 @@ function setupGroupButtonLEDs(model) {
         );
 
         scene.add(
+            glowSprite
+        );
+
+        scene.add(
             pointLight
         );
 
@@ -1167,6 +1295,9 @@ function setupGroupButtonLEDs(model) {
 
             ledMesh:
                 ledMesh,
+
+            glowSprite:
+                glowSprite,
 
             pointLight:
                 pointLight,
@@ -1308,6 +1439,16 @@ function setupGroupFlashLED(model) {
 
     ledMesh.visible = false;
 
+    const glowSprite =
+        createGlowSprite(
+            lightColor,
+            ledSize * 4
+        );
+
+    glowSprite.position.copy(
+        worldPosition
+    );
+
 
     // --------------------------------------------------
     // PointLight
@@ -1332,6 +1473,10 @@ function setupGroupFlashLED(model) {
     );
 
     scene.add(
+        glowSprite
+    );
+
+    scene.add(
         pointLight
     );
 
@@ -1340,6 +1485,9 @@ function setupGroupFlashLED(model) {
 
         ledMesh:
             ledMesh,
+
+        glowSprite:
+            glowSprite,
 
         pointLight:
             pointLight
@@ -1368,6 +1516,15 @@ function flashGroupLED() {
     groupButtonFlashLED
         .ledMesh
         .visible = true;
+
+    groupButtonFlashLED
+        .glowSprite
+        .visible = true;
+
+    groupButtonFlashLED
+        .glowSprite
+        .material
+        .opacity = 0.7;
 
     groupButtonFlashLED
         .ledMesh
@@ -1401,6 +1558,15 @@ function flashGroupLED() {
                 groupButtonFlashLED
                     .ledMesh
                     .visible = false;
+
+                groupButtonFlashLED
+                    .glowSprite
+                    .visible = false;
+
+                groupButtonFlashLED
+                    .glowSprite
+                    .material
+                    .opacity = 0;
 
                 groupButtonFlashLED
                     .ledMesh
@@ -1468,6 +1634,11 @@ function updateLEDs() {
 
                 }
 
+                if (ledInfo.glowSprite) {
+                    ledInfo.glowSprite.visible = false;
+                    ledInfo.glowSprite.material.opacity = 0;
+                }
+
                 if (ledInfo.pointLight) {
 
                     ledInfo.pointLight.intensity =
@@ -1526,6 +1697,19 @@ function animateLEDs() {
 
             }
 
+            if (ledInfo.glowSprite) {
+
+                ledInfo.glowSprite.visible =
+                    ledInfo.currentIntensity > 0.01;
+
+                ledInfo.glowSprite.material.opacity =
+                    Math.min(
+                        ledInfo.currentIntensity / 20,
+                        1
+                    ) * 0.7;
+
+            }
+
 
             // 套用 PointLight
 
@@ -1573,6 +1757,19 @@ function animateLEDs() {
                     .material
                     .emissiveIntensity =
                         ledInfo.currentIntensity;
+
+            }
+
+            if (ledInfo.glowSprite) {
+
+                ledInfo.glowSprite.visible =
+                    ledInfo.currentIntensity > 0.01;
+
+                ledInfo.glowSprite.material.opacity =
+                    Math.min(
+                        ledInfo.currentIntensity / 20,
+                        1
+                    ) * 0.7;
 
             }
 
