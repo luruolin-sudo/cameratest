@@ -10,7 +10,7 @@ import { EXRLoader } from "./libs/EXRLoader.js";
 
 const settings = {
     tiltAngle: 0,
-    ambientIntensity: 1
+    ambientIntensity: 0.8
 };
 
 
@@ -117,6 +117,21 @@ const controls =
 
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+
+const maxOrbitAngle =
+    THREE.MathUtils.degToRad(5);
+
+controls.minAzimuthAngle =
+    -maxOrbitAngle;
+
+controls.maxAzimuthAngle =
+    maxOrbitAngle;
+
+controls.minPolarAngle =
+    Math.PI / 2 - maxOrbitAngle;
+
+controls.maxPolarAngle =
+    Math.PI / 2 + maxOrbitAngle;
 
 controls.minDistance = 1;
 controls.maxDistance = 10;
@@ -317,7 +332,7 @@ const groupButtonLEDs = [];
 
 const additionalModelLights = [];
 
-const selectedLightingGroups = new Set();
+const selectedLightingGroups = new Set([1, 2, 3, 4]);
 
 let lastSelectedLightingGroup = null;
 
@@ -341,7 +356,7 @@ let remoteSleepTimer = null;
 
 let isRemoteSleeping = false;
 
-const REMOTE_SLEEP_DELAY = 3000;
+const REMOTE_SLEEP_DELAY = 10000;
 
 
 // ======================================================
@@ -604,7 +619,7 @@ function setupAdditionalModelLights(model) {
                     light,
                     baseIntensity,
                     brightnessLevel: 4,
-                    isOn: false
+                    isOn: true
                 }
             );
 
@@ -618,6 +633,9 @@ function setupAdditionalModelLights(model) {
     console.log(
         `總共建立 ${additionalModelLights.length} 盞額外燈具`
     );
+
+    updateAdditionalModelLighting();
+    syncBrightnessFeedback();
 
 }
 
@@ -885,6 +903,13 @@ function selectLightingGroup(groupNumber) {
     }
 
     syncBrightnessFeedback();
+
+    updateGroupButtonIndicators();
+
+}
+
+
+function updateGroupButtonIndicators() {
 
     groupButtonLEDs.forEach(
         (ledInfo) => {
@@ -2839,14 +2864,14 @@ renderer.domElement.addEventListener(
 
 const initialModelPositions = {
     original: {
-        x: -0.4,
-        y: -0.2,
-        z: -2,
+        x: -0.6,
+        y: -0.3,
+        z: -2.2,
     },
     additional: {
         x: 0,
-        y: 0,
-        z: -5,
+        y: 0.22,
+        z: -4.5,
     }
 };
 
@@ -2961,6 +2986,8 @@ function loadModel(
                 currentModel
             );
 
+            updateGroupButtonIndicators();
+
 
             // --------------------------------------------------
             // 建立 LED_Button_Group
@@ -2975,9 +3002,7 @@ function loadModel(
             // 初始亮度
             // --------------------------------------------------
 
-            brightnessLevel = 0;
-
-            updateLEDs();
+            syncBrightnessFeedback();
 
             setRemoteSleeping(false);
             resetRemoteSleepTimer();
