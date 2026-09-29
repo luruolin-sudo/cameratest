@@ -276,7 +276,7 @@ new EXRLoader()
                 envMap;
 
             scene.background =
-                envMap;
+                new THREE.Color(0x272727);
 
             texture.dispose();
 
@@ -2876,6 +2876,23 @@ const initialModelPositions = {
 };
 
 
+let pendingModelLoads = 0;
+
+function updateLoadingOverlay(isLoading) {
+
+    const loadingOverlay =
+        document.getElementById(
+            "loading-overlay"
+        );
+
+    if (loadingOverlay) {
+        loadingOverlay.hidden =
+            !isLoading;
+    }
+
+}
+
+
 function loadModel(
     modelPath,
     addToScene = false,
@@ -2885,6 +2902,9 @@ function loadModel(
         z: 0
     }
 ) {
+
+    pendingModelLoads++;
+    updateLoadingOverlay(true);
 
     const loader =
         new GLTFLoader();
@@ -2954,6 +2974,16 @@ function loadModel(
 
                 setupAdditionalModelLights(
                     newModel
+                );
+
+                pendingModelLoads =
+                    Math.max(
+                        0,
+                        pendingModelLoads - 1
+                    );
+
+                updateLoadingOverlay(
+                    pendingModelLoads > 0
                 );
 
                 return;
@@ -3042,6 +3072,16 @@ function loadModel(
                 "遙控器 GLB 載入完成"
             );
 
+            pendingModelLoads =
+                Math.max(
+                    0,
+                    pendingModelLoads - 1
+                );
+
+            updateLoadingOverlay(
+                pendingModelLoads > 0
+            );
+
         },
 
 
@@ -3053,6 +3093,16 @@ function loadModel(
             console.error(
                 "GLB 載入失敗：",
                 error
+            );
+
+            pendingModelLoads =
+                Math.max(
+                    0,
+                    pendingModelLoads - 1
+                );
+
+            updateLoadingOverlay(
+                pendingModelLoads > 0
             );
 
         }
