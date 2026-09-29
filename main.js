@@ -9,7 +9,7 @@ import { EXRLoader } from "./libs/EXRLoader.js";
 // ======================================================
 
 const settings = {
-    rotateSpeed: 0,
+    tiltAngle: 0,
     ambientIntensity: 1
 };
 
@@ -138,7 +138,7 @@ scene.add(
 
 
 // ======================================================
-// UI：旋轉速度
+// UI：模型前後傾角
 // ======================================================
 
 const rotateSpeedUI =
@@ -152,10 +152,19 @@ if (rotateSpeedUI) {
         "input",
         (e) => {
 
-            settings.rotateSpeed =
-                parseFloat(
+            settings.tiltAngle =
+                -Number(
                     e.target.value
                 );
+
+            if (currentModel) {
+
+                currentModel.rotation.x =
+                    THREE.MathUtils.degToRad(
+                        settings.tiltAngle
+                    );
+
+            }
 
         }
     );
@@ -348,6 +357,26 @@ const buttonHitAreas = [];
 
 let buttonHitRadius = 0.04;
 let ledRadius = 0.012;
+
+
+function attachAtWorldPosition(parent, object, worldPosition) {
+
+    parent.updateWorldMatrix(
+        true,
+        true
+    );
+
+    object.position.copy(
+        parent.worldToLocal(
+            worldPosition.clone()
+        )
+    );
+
+    parent.add(
+        object
+    );
+
+}
 
 
 function clearAdditionalModelLights() {
@@ -618,22 +647,29 @@ function syncBrightnessFeedback() {
     const selectedLights =
         getSelectedLightingGroup();
 
-    if (selectedLights.length > 0) {
+    const activeSelectedLights =
+        selectedLights.filter(
+            (lightInfo) =>
+                lightInfo.isOn
+        );
+
+    if (activeSelectedLights.length > 0) {
 
         brightnessLevel =
             Math.max(
-                ...selectedLights.map(
+                ...activeSelectedLights.map(
                     (lightInfo) =>
                         lightInfo.brightnessLevel
                 )
             );
 
-        savedBrightnessLevel =
-            brightnessLevel;
+    } else {
 
-        updateLEDs();
+        brightnessLevel = 0;
 
     }
+
+    updateLEDs();
 
 }
 
@@ -971,9 +1007,7 @@ function setupRemoteButtons(model) {
     buttonHitAreas.forEach(
         (hitArea) => {
 
-            scene.remove(
-                hitArea
-            );
+            hitArea.removeFromParent();
 
             if (hitArea.geometry) {
                 hitArea.geometry.dispose();
@@ -1102,7 +1136,9 @@ function setupRemoteButtons(model) {
                 );
 
 
-            hitArea.position.copy(
+            attachAtWorldPosition(
+                model,
+                hitArea,
                 worldPosition
             );
 
@@ -1112,11 +1148,6 @@ function setupRemoteButtons(model) {
 
             hitArea.userData.originalButton =
                 button;
-
-
-            scene.add(
-                hitArea
-            );
 
 
             buttonHitAreas.push(
@@ -1200,16 +1231,13 @@ function buttonFlash(buttonName) {
         );
 
 
-    flash.position.copy(
+    attachAtWorldPosition(
+        currentModel,
+        flash,
         worldPosition
     );
 
     flash.renderOrder = 20;
-
-
-    scene.add(
-        flash
-    );
 
 
     const startTime =
@@ -1229,9 +1257,7 @@ function buttonFlash(buttonName) {
 
         if (progress >= 1) {
 
-            scene.remove(
-                flash
-            );
+            flash.removeFromParent();
 
             geometry.dispose();
 
@@ -1277,9 +1303,7 @@ function clearRemoteLEDs() {
 
             if (ledInfo.ledMesh) {
 
-                scene.remove(
-                    ledInfo.ledMesh
-                );
+                ledInfo.ledMesh.removeFromParent();
 
                 if (ledInfo.ledMesh.geometry) {
                     ledInfo.ledMesh.geometry.dispose();
@@ -1294,17 +1318,13 @@ function clearRemoteLEDs() {
 
             if (ledInfo.pointLight) {
 
-                scene.remove(
-                    ledInfo.pointLight
-                );
+                ledInfo.pointLight.removeFromParent();
 
             }
 
             if (ledInfo.glowSprite) {
 
-                scene.remove(
-                    ledInfo.glowSprite
-                );
+                ledInfo.glowSprite.removeFromParent();
 
                 ledInfo.glowSprite.material.map.dispose();
                 ledInfo.glowSprite.material.dispose();
@@ -1330,9 +1350,7 @@ function clearGroupLEDs() {
 
             if (ledInfo.ledMesh) {
 
-                scene.remove(
-                    ledInfo.ledMesh
-                );
+                ledInfo.ledMesh.removeFromParent();
 
                 if (ledInfo.ledMesh.geometry) {
                     ledInfo.ledMesh.geometry.dispose();
@@ -1347,17 +1365,13 @@ function clearGroupLEDs() {
 
             if (ledInfo.pointLight) {
 
-                scene.remove(
-                    ledInfo.pointLight
-                );
+                ledInfo.pointLight.removeFromParent();
 
             }
 
             if (ledInfo.glowSprite) {
 
-                scene.remove(
-                    ledInfo.glowSprite
-                );
+                ledInfo.glowSprite.removeFromParent();
 
                 ledInfo.glowSprite.material.map.dispose();
                 ledInfo.glowSprite.material.dispose();
@@ -1378,9 +1392,7 @@ function clearGroupLEDs() {
             groupButtonFlashLED.ledMesh
         ) {
 
-            scene.remove(
-                groupButtonFlashLED.ledMesh
-            );
+            groupButtonFlashLED.ledMesh.removeFromParent();
 
             groupButtonFlashLED
                 .ledMesh
@@ -1399,17 +1411,13 @@ function clearGroupLEDs() {
             groupButtonFlashLED.pointLight
         ) {
 
-            scene.remove(
-                groupButtonFlashLED.pointLight
-            );
+            groupButtonFlashLED.pointLight.removeFromParent();
 
         }
 
         if (groupButtonFlashLED.glowSprite) {
 
-            scene.remove(
-                groupButtonFlashLED.glowSprite
-            );
+            groupButtonFlashLED.glowSprite.removeFromParent();
 
             groupButtonFlashLED.glowSprite.material.map.dispose();
             groupButtonFlashLED.glowSprite.material.dispose();
@@ -1589,7 +1597,9 @@ function setupRemoteLEDs(model) {
             );
 
 
-        ledMesh.position.copy(
+        attachAtWorldPosition(
+            model,
+            ledMesh,
             worldPosition
         );
 
@@ -1603,7 +1613,9 @@ function setupRemoteLEDs(model) {
                 ledSize * 4
             );
 
-        glowSprite.position.copy(
+        attachAtWorldPosition(
+            model,
+            glowSprite,
             worldPosition
         );
 
@@ -1621,21 +1633,10 @@ function setupRemoteLEDs(model) {
             );
 
 
-        pointLight.position.copy(
+        attachAtWorldPosition(
+            model,
+            pointLight,
             worldPosition
-        );
-
-
-        scene.add(
-            ledMesh
-        );
-
-        scene.add(
-            glowSprite
-        );
-
-        scene.add(
-            pointLight
         );
 
 
@@ -1805,7 +1806,9 @@ function setupGroupButtonLEDs(model) {
             );
 
 
-        ledMesh.position.copy(
+        attachAtWorldPosition(
+            model,
+            ledMesh,
             worldPosition
         );
 
@@ -1817,7 +1820,9 @@ function setupGroupButtonLEDs(model) {
                 ledSize * 4
             );
 
-        glowSprite.position.copy(
+        attachAtWorldPosition(
+            model,
+            glowSprite,
             worldPosition
         );
 
@@ -1835,21 +1840,10 @@ function setupGroupButtonLEDs(model) {
             );
 
 
-        pointLight.position.copy(
+        attachAtWorldPosition(
+            model,
+            pointLight,
             worldPosition
-        );
-
-
-        scene.add(
-            ledMesh
-        );
-
-        scene.add(
-            glowSprite
-        );
-
-        scene.add(
-            pointLight
         );
 
 
@@ -2005,7 +1999,9 @@ function setupGroupFlashLED(model) {
         );
 
 
-    ledMesh.position.copy(
+    attachAtWorldPosition(
+        model,
+        ledMesh,
         worldPosition
     );
 
@@ -2017,7 +2013,9 @@ function setupGroupFlashLED(model) {
             ledSize * 4
         );
 
-    glowSprite.position.copy(
+    attachAtWorldPosition(
+        model,
+        glowSprite,
         worldPosition
     );
 
@@ -2035,21 +2033,10 @@ function setupGroupFlashLED(model) {
         );
 
 
-    pointLight.position.copy(
+    attachAtWorldPosition(
+        model,
+        pointLight,
         worldPosition
-    );
-
-
-    scene.add(
-        ledMesh
-    );
-
-    scene.add(
-        glowSprite
-    );
-
-    scene.add(
-        pointLight
     );
 
 
@@ -2689,10 +2676,18 @@ function handleButton(
             (lightInfo) => {
 
                 lightInfo.brightnessLevel =
-                    Math.min(
-                        lightInfo.brightnessLevel + 1,
-                        8
-                    );
+                    lightInfo.isOn
+                        ? Math.min(
+                            lightInfo.brightnessLevel + 1,
+                            8
+                        )
+                        : 1;
+
+                lightInfo.isOn = true;
+
+                additionalGroupFadeOuts.delete(
+                    lightInfo.groupNumber
+                );
 
             }
         );
@@ -2729,10 +2724,18 @@ function handleButton(
             (lightInfo) => {
 
                 lightInfo.brightnessLevel =
-                    Math.max(
-                        lightInfo.brightnessLevel - 1,
-                        1
-                    );
+                    lightInfo.isOn
+                        ? Math.max(
+                            lightInfo.brightnessLevel - 1,
+                            1
+                        )
+                        : 1;
+
+                lightInfo.isOn = true;
+
+                additionalGroupFadeOuts.delete(
+                    lightInfo.groupNumber
+                );
 
             }
         );
@@ -2889,7 +2892,11 @@ function loadModel(
             // --------------------------------------------------
 
             newModel.rotation.set(
-                0,
+                addToScene
+                    ? 0
+                    : THREE.MathUtils.degToRad(
+                        settings.tiltAngle
+                    ),
                 0,
                 0
             );
@@ -3107,21 +3114,6 @@ function animate() {
     requestAnimationFrame(
         animate
     );
-
-
-    // --------------------------------------------------
-    // 模型自動旋轉
-    // --------------------------------------------------
-
-    if (
-        currentModel &&
-        settings.rotateSpeed !== 0
-    ) {
-
-        currentModel.rotation.y +=
-            settings.rotateSpeed;
-
-    }
 
 
     // --------------------------------------------------
