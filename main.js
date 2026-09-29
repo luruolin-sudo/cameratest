@@ -302,12 +302,37 @@ const ledData = [];
 const groupButtonLEDs = [];
 
 
+// ======================================================
+// 額外模型燈具
+// ======================================================
+
+const additionalModelLights = [];
+
+const selectedLightingGroups = new Set();
+
+let lastSelectedLightingGroup = null;
+
+const additionalGroupFixtureMaterials = new Map();
+
+const additionalGroupFadeOuts = new Map();
+
+const GROUP_LIGHT_FADE_DURATION = 800;
+
+const FIXTURE_EMISSIVE_FADE_DURATION = 600;
+
+
 // LED_Button_Group
 // Group 1 ~ 4 任一按下時短暫亮起
 
 let groupButtonFlashLED = null;
 
 let groupButtonFlashTimer = null;
+
+let remoteSleepTimer = null;
+
+let isRemoteSleeping = false;
+
+const REMOTE_SLEEP_DELAY = 3000;
 
 
 // ======================================================
@@ -323,6 +348,553 @@ const buttonHitAreas = [];
 
 let buttonHitRadius = 0.04;
 let ledRadius = 0.012;
+
+
+function clearAdditionalModelLights() {
+
+    additionalModelLights.forEach(
+        (lightInfo) => {
+
+            scene.remove(
+                lightInfo.light
+            );
+
+        }
+    );
+
+    additionalModelLights.length = 0;
+    additionalGroupFadeOuts.clear();
+
+}
+
+
+function setupAdditionalModelLights(model) {
+
+    clearAdditionalModelLights();
+
+    additionalGroupFixtureMaterials.clear();
+
+    model.traverse(
+        (fixtureNode) => {
+
+            const fixtureMatch =
+                fixtureNode.name.match(
+                    /^Fixture_Group_(\d+)(?:_|$)/
+                );
+
+            if (!fixtureMatch) {
+                return;
+            }
+
+            const groupNumber =
+                Number(fixtureMatch[1]);
+
+            const materials =
+                additionalGroupFixtureMaterials.get(
+                    groupNumber
+                ) || [];
+
+            fixtureNode.traverse(
+                (object) => {
+
+                    if (!object.isMesh || !object.material) {
+                        return;
+                    }
+
+                    const originalMaterials =
+                        Array.isArray(object.material)
+                            ? object.material
+                            : [object.material];
+
+                    const clonedMaterials =
+                        originalMaterials.map(
+                            (material) => {
+
+                                const clonedMaterial =
+                                    material.clone();
+
+                                if (clonedMaterial.emissive) {
+
+                                    materials.push({
+                                        material: clonedMaterial,
+                                        baseIntensity:
+                                            clonedMaterial.emissiveIntensity
+                                    });
+
+                                    clonedMaterial.emissiveIntensity = 0;
+
+                                }
+
+                                return clonedMaterial;
+
+                            }
+                        );
+
+                    object.material =
+                        Array.isArray(object.material)
+                            ? clonedMaterials
+                            : clonedMaterials[0];
+
+                }
+            );
+
+            additionalGroupFixtureMaterials.set(
+                groupNumber,
+                materials
+            );
+
+        }
+    );
+
+    const lightNodes = [];
+
+    model.traverse(
+        (object) => {
+
+            if (
+                /^Light_Group_\d+_\d+$/.test(
+                    object.name
+                )
+            ) {
+
+                lightNodes.push(
+                    object
+                );
+
+            }
+
+        }
+    );
+
+    lightNodes.forEach(
+        (lightNode) => {
+
+            const targetName =
+                lightNode.name.replace(
+                    "Light_Group_",
+                    "Target_Group_"
+                );
+
+            const targetNode =
+                model.getObjectByName(
+                    targetName
+                );
+
+            if (!targetNode) {
+
+                console.warn(
+                    `找不到對應照射面：${targetName}`
+                );
+
+                return;
+
+            }
+
+            const groupNumber =
+                Number(
+                    lightNode.name.match(
+                        /^Light_Group_(\d+)_/
+                    )[1]
+                );
+
+            const lightColor =
+                [1, 3, 4].includes(groupNumber)
+                    ? 0xffb16e
+                    : 0xffffff;
+
+            const light =
+                groupNumber === 2 ||
+                groupNumber === 4
+                    ? new THREE.RectAreaLight(
+                        lightColor,
+                        groupNumber === 2
+                            ? 150
+                            : 100,
+                        groupNumber === 2
+                            ? 0.6
+                            : 1.3,
+                        groupNumber === 2
+                            ? 0.6
+                            : 0.08
+                    )
+                    : new THREE.SpotLight(
+                        lightColor,
+                        40,
+                        4,
+                        Math.PI / 3,
+                        0.75,
+                        2
+                    );
+
+            const worldPosition =
+                new THREE.Vector3();
+
+            lightNode.getWorldPosition(
+                worldPosition
+            );
+
+            light.position.copy(
+                worldPosition
+            );
+
+            if (light.isRectAreaLight) {
+
+                const targetPosition =
+                    new THREE.Vector3();
+
+                targetNode.getWorldPosition(
+                    targetPosition
+                );
+
+                light.lookAt(
+                    targetPosition
+                );
+
+            } else {
+
+                light.target =
+                    targetNode;
+
+            }
+
+            light.castShadow = false;
+            light.visible = false;
+
+            const baseIntensity =
+                light.intensity;
+
+            light.intensity = 0;
+
+            scene.add(
+                light
+            );
+
+            additionalModelLights.push(
+                {
+                    groupNumber,
+                    light,
+                    baseIntensity,
+                    brightnessLevel: 4,
+                    isOn: false
+                }
+            );
+
+            console.log(
+                `建立燈具：${lightNode.name} -> ${targetName}`
+            );
+
+        }
+    );
+
+    console.log(
+        `總共建立 ${additionalModelLights.length} 盞額外燈具`
+    );
+
+}
+
+
+function getSelectedLightingGroup() {
+
+    return additionalModelLights.filter(
+        (lightInfo) =>
+            selectedLightingGroups.has(
+                lightInfo.groupNumber
+            )
+    );
+
+}
+
+
+function syncBrightnessFeedback() {
+
+    if (selectedLightingGroups.size === 0) {
+
+        brightnessLevel = 0;
+        updateLEDs();
+        return;
+
+    }
+
+    const selectedLights =
+        getSelectedLightingGroup();
+
+    if (selectedLights.length > 0) {
+
+        brightnessLevel =
+            Math.max(
+                ...selectedLights.map(
+                    (lightInfo) =>
+                        lightInfo.brightnessLevel
+                )
+            );
+
+        savedBrightnessLevel =
+            brightnessLevel;
+
+        updateLEDs();
+
+    }
+
+}
+
+
+function updateSelectedLightingGroup() {
+
+    updateAdditionalModelLighting();
+
+}
+
+
+function updateAdditionalModelLighting() {
+
+    const now =
+        performance.now();
+
+    const groupLightFadeFactors =
+        new Map();
+
+    const groupEmissiveFadeFactors =
+        new Map();
+
+    const groupNumbers =
+        new Set(
+            additionalModelLights.map(
+                (lightInfo) =>
+                    lightInfo.groupNumber
+            )
+        );
+
+    groupNumbers.forEach(
+        (groupNumber) => {
+
+            const groupLights =
+                additionalModelLights.filter(
+                    (lightInfo) =>
+                        lightInfo.groupNumber ===
+                        groupNumber
+                );
+
+            const isOn =
+                groupLights.some(
+                    (lightInfo) =>
+                        lightInfo.isOn
+                );
+
+            const fadeStart =
+                additionalGroupFadeOuts.get(
+                    groupNumber
+                );
+
+            const elapsed =
+                fadeStart === undefined
+                    ? 0
+                    : now - fadeStart;
+
+            const lightFadeFactor =
+                isOn
+                    ? 1
+                    : fadeStart === undefined
+                        ? 0
+                        : Math.max(
+                            0,
+                            1 -
+                                elapsed /
+                                GROUP_LIGHT_FADE_DURATION
+                        );
+
+            const emissiveFadeFactor =
+                isOn
+                    ? 1
+                    : fadeStart === undefined
+                        ? 0
+                        : Math.max(
+                            0,
+                            1 -
+                                elapsed /
+                                FIXTURE_EMISSIVE_FADE_DURATION
+                        );
+
+            groupLightFadeFactors.set(
+                groupNumber,
+                lightFadeFactor
+            );
+
+            groupEmissiveFadeFactors.set(
+                groupNumber,
+                emissiveFadeFactor
+            );
+
+            if (
+                !isOn &&
+                fadeStart !== undefined &&
+                lightFadeFactor === 0
+            ) {
+
+                additionalGroupFadeOuts.delete(
+                    groupNumber
+                );
+
+            }
+
+        }
+    );
+
+    additionalModelLights.forEach(
+        (lightInfo) => {
+
+            const groupNumber =
+                lightInfo.groupNumber;
+
+            const fadeFactor =
+                groupLightFadeFactors.get(
+                    groupNumber
+                ) || 0;
+
+            lightInfo.light.visible =
+                fadeFactor > 0;
+
+            lightInfo.light.intensity =
+                lightInfo.baseIntensity *
+                (lightInfo.brightnessLevel / 8) *
+                fadeFactor;
+
+        }
+    );
+
+    additionalGroupFixtureMaterials.forEach(
+        (materials, groupNumber) => {
+
+            const groupLights =
+                additionalModelLights.filter(
+                    (lightInfo) =>
+                        lightInfo.groupNumber ===
+                        groupNumber
+                );
+
+            const isOn =
+                groupLights.some(
+                    (lightInfo) =>
+                        lightInfo.isOn
+                );
+
+            const fadeFactor =
+                isOn
+                    ? 1
+                    : groupEmissiveFadeFactors.get(
+                        groupNumber
+                    ) || 0;
+
+            const brightnessLevel =
+                groupLights.length > 0
+                    ? Math.max(
+                        ...groupLights.map(
+                            (lightInfo) =>
+                                lightInfo.brightnessLevel
+                        )
+                    )
+                    : 0;
+
+            materials.forEach(
+                (materialInfo) => {
+
+                    materialInfo.material.emissiveIntensity =
+                        materialInfo.baseIntensity *
+                        (brightnessLevel / 8) *
+                        fadeFactor;
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+function selectLightingGroup(groupNumber) {
+
+    if (
+        selectedLightingGroups.has(
+            groupNumber
+        )
+    ) {
+
+        selectedLightingGroups.delete(
+            groupNumber
+        );
+
+    } else {
+
+        selectedLightingGroups.add(
+            groupNumber
+        );
+
+        lastSelectedLightingGroup =
+            groupNumber;
+
+    }
+
+    if (
+        selectedLightingGroups.size > 0 &&
+        !selectedLightingGroups.has(
+            lastSelectedLightingGroup
+        )
+    ) {
+
+        lastSelectedLightingGroup =
+            Array.from(
+                selectedLightingGroups
+            ).pop();
+
+    }
+
+    syncBrightnessFeedback();
+
+    groupButtonLEDs.forEach(
+        (ledInfo) => {
+
+            const isSelected =
+                selectedLightingGroups.has(
+                    ledInfo.index
+                );
+
+            const intensity =
+                isSelected
+                    ? 20
+                    : 0;
+
+            const lightIntensity =
+                isSelected
+                    ? 0.45
+                    : 0;
+
+            ledInfo.currentIntensity =
+                intensity;
+
+            ledInfo.targetIntensity =
+                intensity;
+
+            ledInfo.currentLightIntensity =
+                lightIntensity;
+
+            ledInfo.targetLightIntensity =
+                lightIntensity;
+
+            ledInfo.ledMesh.visible =
+                isSelected;
+
+            ledInfo.ledMesh
+                .material
+                .emissiveIntensity =
+                    intensity;
+
+            ledInfo.pointLight.intensity =
+                lightIntensity;
+
+        }
+    );
+
+}
 
 
 function createGlowSprite(color, size) {
@@ -1589,6 +2161,107 @@ function flashGroupLED() {
 }
 
 
+function setRemoteSleeping(sleeping) {
+
+    isRemoteSleeping =
+        sleeping;
+
+    ledData.forEach(
+        (ledInfo) => {
+
+            if (ledInfo.ledMesh) {
+                ledInfo.ledMesh.visible =
+                    !sleeping &&
+                    ledInfo.currentIntensity > 0.01;
+            }
+
+            if (ledInfo.glowSprite) {
+                ledInfo.glowSprite.visible =
+                    !sleeping &&
+                    ledInfo.currentIntensity > 0.01;
+            }
+
+            if (ledInfo.pointLight) {
+                ledInfo.pointLight.intensity =
+                    sleeping
+                        ? 0
+                        : ledInfo.currentLightIntensity;
+            }
+
+        }
+    );
+
+    groupButtonLEDs.forEach(
+        (ledInfo) => {
+
+            const isSelected =
+                selectedLightingGroups.has(
+                    ledInfo.index
+                );
+
+            if (ledInfo.ledMesh) {
+                ledInfo.ledMesh.visible =
+                    !sleeping && isSelected;
+            }
+
+            if (ledInfo.glowSprite) {
+                ledInfo.glowSprite.visible =
+                    !sleeping && isSelected;
+            }
+
+            if (ledInfo.pointLight) {
+                ledInfo.pointLight.intensity =
+                    sleeping
+                        ? 0
+                        : ledInfo.currentLightIntensity;
+            }
+
+        }
+    );
+
+    if (groupButtonFlashLED) {
+
+        groupButtonFlashLED.ledMesh.visible =
+            false;
+
+        groupButtonFlashLED.glowSprite.visible =
+            false;
+
+        groupButtonFlashLED.glowSprite.material.opacity =
+            0;
+
+        groupButtonFlashLED.ledMesh
+            .material
+            .emissiveIntensity = 0;
+
+        groupButtonFlashLED.pointLight.intensity =
+            0;
+
+    }
+
+}
+
+
+function resetRemoteSleepTimer() {
+
+    if (remoteSleepTimer) {
+        clearTimeout(remoteSleepTimer);
+    }
+
+    remoteSleepTimer =
+        setTimeout(
+            () => {
+
+                setRemoteSleeping(true);
+                remoteSleepTimer = null;
+
+            },
+            REMOTE_SLEEP_DELAY
+        );
+
+}
+
+
 // ======================================================
 // LED 亮度
 // ======================================================
@@ -1688,6 +2361,7 @@ function animateLEDs() {
             if (ledInfo.ledMesh) {
 
                 ledInfo.ledMesh.visible =
+                    !isRemoteSleeping &&
                     ledInfo.currentIntensity > 0.01;
 
                 ledInfo.ledMesh
@@ -1700,6 +2374,7 @@ function animateLEDs() {
             if (ledInfo.glowSprite) {
 
                 ledInfo.glowSprite.visible =
+                    !isRemoteSleeping &&
                     ledInfo.currentIntensity > 0.01;
 
                 ledInfo.glowSprite.material.opacity =
@@ -1717,7 +2392,9 @@ function animateLEDs() {
 
                 ledInfo.pointLight
                     .intensity =
-                        ledInfo.currentLightIntensity;
+                        isRemoteSleeping
+                            ? 0
+                            : ledInfo.currentLightIntensity;
 
             }
 
@@ -1751,6 +2428,7 @@ function animateLEDs() {
             if (ledInfo.ledMesh) {
 
                 ledInfo.ledMesh.visible =
+                    !isRemoteSleeping &&
                     ledInfo.currentIntensity > 0.01;
 
                 ledInfo.ledMesh
@@ -1763,6 +2441,7 @@ function animateLEDs() {
             if (ledInfo.glowSprite) {
 
                 ledInfo.glowSprite.visible =
+                    !isRemoteSleeping &&
                     ledInfo.currentIntensity > 0.01;
 
                 ledInfo.glowSprite.material.opacity =
@@ -1778,7 +2457,9 @@ function animateLEDs() {
 
                 ledInfo.pointLight
                     .intensity =
-                        ledInfo.currentLightIntensity;
+                        isRemoteSleeping
+                            ? 0
+                            : ledInfo.currentLightIntensity;
 
             }
 
@@ -1874,6 +2555,16 @@ function handleRemotePointer(event) {
         return;
     }
 
+    if (isRemoteSleeping) {
+
+        setRemoteSleeping(false);
+        resetRemoteSleepTimer();
+        return;
+
+    }
+
+    resetRemoteSleepTimer();
+
 
     console.log(
         "按下：",
@@ -1901,6 +2592,21 @@ function handleButton(
     buttonName
 ) {
 
+    if (
+        selectedLightingGroups.size === 0 &&
+        [
+            "Button_Power",
+            "Button_Brighten",
+            "Button_Dim"
+        ].includes(buttonName)
+    ) {
+
+        flashGroupLED();
+
+        return;
+
+    }
+
 
     // ==================================================
     // Power
@@ -1911,24 +2617,52 @@ function handleButton(
         "Button_Power"
     ) {
 
-        if (
-            brightnessLevel > 0
-        ) {
+        const selectedLights =
+            getSelectedLightingGroup();
 
-            savedBrightnessLevel =
-                brightnessLevel;
+        if (selectedLights.length > 0) {
 
-            brightnessLevel = 0;
+            const turnOn =
+                selectedLights.some(
+                    (lightInfo) =>
+                        !lightInfo.isOn
+                );
 
-        } else {
+            const transitionTime =
+                performance.now();
 
-            brightnessLevel =
-                savedBrightnessLevel;
+            selectedLights.forEach(
+                (lightInfo) => {
+
+                    lightInfo.isOn =
+                        turnOn;
+
+                    if (turnOn) {
+
+                        additionalGroupFadeOuts.delete(
+                            lightInfo.groupNumber
+                        );
+
+                    } else {
+
+                        additionalGroupFadeOuts.set(
+                            lightInfo.groupNumber,
+                            transitionTime
+                        );
+
+                    }
+
+                }
+            );
+
+            updateSelectedLightingGroup();
 
         }
 
 
-        updateLEDs();
+        syncBrightnessFeedback();
+
+        flashGroupLED();
 
 
         console.log(
@@ -1951,29 +2685,24 @@ function handleButton(
         "Button_Brighten"
     ) {
 
-        if (brightnessLevel > 0) {
+        getSelectedLightingGroup().forEach(
+            (lightInfo) => {
 
-            brightnessLevel =
-                Math.min(
-                    brightnessLevel + 1,
-                    8
-                );
+                lightInfo.brightnessLevel =
+                    Math.min(
+                        lightInfo.brightnessLevel + 1,
+                        8
+                    );
 
-            savedBrightnessLevel =
-                brightnessLevel;
+            }
+        );
 
-        } else {
-
-            savedBrightnessLevel =
-                Math.min(
-                    savedBrightnessLevel + 1,
-                    8
-                );
-
-        }
+        updateSelectedLightingGroup();
 
 
-        updateLEDs();
+        syncBrightnessFeedback();
+
+        flashGroupLED();
 
 
         console.log(
@@ -1996,29 +2725,24 @@ function handleButton(
         "Button_Dim"
     ) {
 
-        if (brightnessLevel > 0) {
+        getSelectedLightingGroup().forEach(
+            (lightInfo) => {
 
-            brightnessLevel =
-                Math.max(
-                    brightnessLevel - 1,
-                    1
-                );
+                lightInfo.brightnessLevel =
+                    Math.max(
+                        lightInfo.brightnessLevel - 1,
+                        1
+                    );
 
-            savedBrightnessLevel =
-                brightnessLevel;
+            }
+        );
 
-        } else {
-
-            savedBrightnessLevel =
-                Math.max(
-                    savedBrightnessLevel - 1,
-                    1
-                );
-
-        }
+        updateSelectedLightingGroup();
 
 
-        updateLEDs();
+        syncBrightnessFeedback();
+
+        flashGroupLED();
 
 
         console.log(
@@ -2057,57 +2781,9 @@ function handleButton(
             );
 
 
-        const ledInfo =
-            groupButtonLEDs.find(
-                (led) =>
-                    led.index ===
-                    groupNumber
-            );
-
-
-        if (ledInfo) {
-
-            ledInfo.isOn =
-                !ledInfo.isOn;
-
-            const intensity =
-                ledInfo.isOn
-                    ? 20.0
-                    : 0;
-
-            const lightIntensity =
-                ledInfo.isOn
-                    ? 0.45
-                    : 0;
-
-            ledInfo.targetIntensity =
-                intensity;
-
-            ledInfo.targetLightIntensity =
-                lightIntensity;
-
-            ledInfo.currentIntensity =
-                intensity;
-
-            ledInfo.currentLightIntensity =
-                lightIntensity;
-
-
-            ledInfo.ledMesh
-                .material
-                .emissiveIntensity =
-                    intensity;
-
-
-            ledInfo.pointLight
-                .intensity =
-                    lightIntensity;
-
-            ledInfo.ledMesh.visible =
-                ledInfo.isOn;
-
-
-        }
+        selectLightingGroup(
+            groupNumber
+        );
 
 
         // LED_Button_Group
@@ -2135,6 +2811,7 @@ function handleButton(
             buttonName
         );
 
+        flashGroupLED();
 
         return;
 
@@ -2157,7 +2834,29 @@ renderer.domElement.addEventListener(
 // 載入模型
 // ======================================================
 
-function loadModel(modelPath) {
+const initialModelPositions = {
+    original: {
+        x: -0.4,
+        y: -0.2,
+        z: -2,
+    },
+    additional: {
+        x: 0,
+        y: 0,
+        z: -5,
+    }
+};
+
+
+function loadModel(
+    modelPath,
+    addToScene = false,
+    position = {
+        x: 0,
+        y: 0,
+        z: 0
+    }
+) {
 
     const loader =
         new GLTFLoader();
@@ -2179,9 +2878,9 @@ function loadModel(modelPath) {
             // --------------------------------------------------
 
             newModel.position.set(
-                0,
-                0,
-                0
+                position.x,
+                position.y,
+                position.z
             );
 
 
@@ -2196,39 +2895,37 @@ function loadModel(modelPath) {
             );
 
 
-            // --------------------------------------------------
-            // 清除舊模型
-            // --------------------------------------------------
+            if (!addToScene) {
 
-            if (currentModel) {
+                if (currentModel) {
 
-                scene.remove(
-                    currentModel
-                );
+                    scene.remove(
+                        currentModel
+                    );
+
+                }
+
+                clearRemoteLEDs();
+                clearGroupLEDs();
+
+                currentModel =
+                    newModel;
 
             }
 
 
-            // --------------------------------------------------
-            // 清除舊的控制元件
-            // --------------------------------------------------
-
-            clearRemoteLEDs();
-
-            clearGroupLEDs();
-
-
-            // --------------------------------------------------
-            // 設定新模型
-            // --------------------------------------------------
-
-            currentModel =
-                newModel;
-
-
             scene.add(
-                currentModel
+                newModel
             );
+
+            if (addToScene) {
+
+                setupAdditionalModelLights(
+                    newModel
+                );
+
+                return;
+            }
 
 
             // --------------------------------------------------
@@ -2274,6 +2971,9 @@ function loadModel(modelPath) {
             brightnessLevel = 0;
 
             updateLEDs();
+
+            setRemoteSleeping(false);
+            resetRemoteSleepTimer();
 
 
             // --------------------------------------------------
@@ -2335,7 +3035,15 @@ function loadModel(modelPath) {
 // ======================================================
 
 loadModel(
-    "https://dl.dropboxusercontent.com/scl/fi/ni1wbk8s6u21i6vhhvnzh/.glb?rlkey=d704a60hxrx9e47ulvuehkw8z&dl=1"
+    "https://dl.dropboxusercontent.com/scl/fi/ni1wbk8s6u21i6vhhvnzh/.glb?rlkey=d704a60hxrx9e47ulvuehkw8z&dl=1",
+    false,
+    initialModelPositions.original
+);
+
+loadModel(
+    "https://dl.dropboxusercontent.com/scl/fi/va4lgm3kaetcm4gjxhgz6/.glb?rlkey=wny1jiqvk1bo76xpt5xwtfg0i&dl=1",
+    true,
+    initialModelPositions.additional
 );
 
 
@@ -2421,6 +3129,8 @@ function animate() {
     // --------------------------------------------------
 
     animateLEDs();
+
+    updateAdditionalModelLighting();
 
 
     // --------------------------------------------------
