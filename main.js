@@ -10,7 +10,7 @@ import { EXRLoader } from "./libs/EXRLoader.js";
 
 const settings = {
     tiltAngle: 0,
-    ambientIntensity: 0.8
+    ambientIntensity: 1
 };
 
 
@@ -615,6 +615,7 @@ function setupAdditionalModelLights(model) {
 
             additionalModelLights.push(
                 {
+                    name: lightNode.name,
                     groupNumber,
                     light,
                     baseIntensity,
@@ -636,6 +637,122 @@ function setupAdditionalModelLights(model) {
 
     updateAdditionalModelLighting();
     syncBrightnessFeedback();
+
+}
+
+
+function applyMemoryOneScene() {
+
+    selectedLightingGroups.clear();
+
+    [1, 2, 3, 4].forEach(
+        (groupNumber) => {
+
+            selectedLightingGroups.add(
+                groupNumber
+            );
+
+        }
+    );
+
+    lastSelectedLightingGroup = 4;
+
+    additionalGroupFadeOuts.clear();
+
+    additionalModelLights.forEach(
+        (lightInfo) => {
+
+            lightInfo.isOn = true;
+            lightInfo.brightnessLevel = 8;
+
+        }
+    );
+
+    updateAdditionalModelLighting();
+    syncBrightnessFeedback();
+    updateGroupButtonIndicators();
+
+    console.log(
+        "已套用 Button_Memory_1 情境：Group 1~4 全亮"
+    );
+
+}
+
+
+function applyMemoryTwoScene() {
+
+    selectedLightingGroups.clear();
+    selectedLightingGroups.add(2);
+    selectedLightingGroups.add(4);
+
+    lastSelectedLightingGroup = 4;
+
+    additionalGroupFadeOuts.clear();
+
+    additionalModelLights.forEach(
+        (lightInfo) => {
+
+            const shouldBeOn =
+                lightInfo.groupNumber === 2 ||
+                lightInfo.groupNumber === 4;
+
+            lightInfo.isOn =
+                shouldBeOn;
+
+            if (shouldBeOn) {
+                lightInfo.brightnessLevel = 8;
+            }
+
+        }
+    );
+
+    updateAdditionalModelLighting();
+    syncBrightnessFeedback();
+    updateGroupButtonIndicators();
+
+    console.log(
+        "已套用 Button_Memory_2 情境：Group 2、4 全亮；Group 1、3 關閉"
+    );
+
+}
+
+
+function applyMemoryThreeScene() {
+
+    selectedLightingGroups.clear();
+    selectedLightingGroups.add(1);
+    selectedLightingGroups.add(3);
+    selectedLightingGroups.add(4);
+
+    lastSelectedLightingGroup = 4;
+
+    additionalGroupFadeOuts.clear();
+
+    additionalModelLights.forEach(
+        (lightInfo) => {
+
+            const shouldBeOn =
+                lightInfo.groupNumber === 1 ||
+                lightInfo.groupNumber === 3 ||
+                lightInfo.groupNumber === 4;
+
+            lightInfo.isOn =
+                shouldBeOn;
+
+            if (shouldBeOn) {
+                lightInfo.brightnessLevel = 3;
+            }
+
+        }
+    );
+
+    updateAdditionalModelLighting();
+    syncBrightnessFeedback();
+    updateGroupButtonIndicators();
+
+    console.log(
+        "已套用 Button_Memory_3 情境：Group 1、3、4 第 3 級；Group 2 關閉"
+    );
 
 }
 
@@ -2834,10 +2951,25 @@ function handleButton(
         )
     ) {
 
-        console.log(
-            "記憶按鈕：",
-            buttonName
-        );
+        if (buttonName === "Button_Memory_1") {
+
+            applyMemoryOneScene();
+
+        } else if (buttonName === "Button_Memory_2") {
+
+            applyMemoryTwoScene();
+
+        } else if (buttonName === "Button_Memory_3") {
+
+            applyMemoryThreeScene();
+
+        } else {
+
+            console.log(
+                `${buttonName} 尚未設定情境`
+            );
+
+        }
 
         flashGroupLED();
 
@@ -2942,7 +3074,9 @@ function loadModel(
                     : THREE.MathUtils.degToRad(
                         settings.tiltAngle
                     ),
-                0,
+                addToScene
+                    ? THREE.MathUtils.degToRad(-20)
+                    : 0,
                 0
             );
 
