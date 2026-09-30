@@ -365,6 +365,55 @@ const REMOTE_SLEEP_DELAY = 10000;
 
 const buttonHitAreas = [];
 
+const buttonLabelSprites = [];
+
+let areButtonLabelsVisible = true;
+
+const memoryLabelToggle =
+    document.getElementById(
+        "memory-label-toggle"
+    );
+
+if (memoryLabelToggle) {
+
+    memoryLabelToggle.addEventListener(
+        "click",
+        () => {
+
+            areButtonLabelsVisible =
+                !areButtonLabelsVisible;
+
+            buttonLabelSprites.forEach(
+                (sprite) => {
+
+                    sprite.visible =
+                        areButtonLabelsVisible;
+
+                }
+            );
+
+            memoryLabelToggle.setAttribute(
+                "aria-pressed",
+                String(areButtonLabelsVisible)
+            );
+
+            const stateLabel =
+                memoryLabelToggle.querySelector(
+                    ".memory-label-toggle-state"
+                );
+
+            if (stateLabel) {
+                stateLabel.textContent =
+                    areButtonLabelsVisible
+                        ? "顯示中"
+                        : "已隱藏";
+            }
+
+        }
+    );
+
+}
+
 
 // ======================================================
 // 尺寸參數
@@ -390,6 +439,185 @@ function attachAtWorldPosition(parent, object, worldPosition) {
     parent.add(
         object
     );
+
+}
+
+
+function clearButtonLabels() {
+
+    buttonLabelSprites.forEach(
+        (sprite) => {
+
+            sprite.removeFromParent();
+            sprite.material.map.dispose();
+            sprite.material.dispose();
+
+        }
+    );
+
+    buttonLabelSprites.length = 0;
+
+}
+
+
+function createButtonCallout(
+    model,
+    button,
+    labelText,
+    textSide = "left",
+    verticalOffset = 0,
+    backgroundColor = "#ffffff"
+) {
+
+    const canvas =
+        document.createElement("canvas");
+
+    canvas.width = 480;
+    canvas.height = 96;
+
+    const context =
+        canvas.getContext("2d");
+
+    context.lineCap = "round";
+    context.lineWidth = 3;
+    context.strokeStyle = "rgba(218, 230, 232, 0.95)";
+    context.fillStyle = "rgba(218, 230, 232, 0.95)";
+
+    if (textSide === "left") {
+
+        context.fillStyle = backgroundColor;
+        context.beginPath();
+        context.moveTo(12, 16);
+        context.lineTo(255, 16);
+        context.quadraticCurveTo(270, 16, 270, 31);
+        context.lineTo(270, 65);
+        context.quadraticCurveTo(270, 80, 255, 80);
+        context.lineTo(12, 80);
+        context.closePath();
+        context.fill();
+
+        context.font = "600 34px 'Microsoft JhengHei', sans-serif";
+        context.textBaseline = "middle";
+        context.fillStyle = "#263238";
+        context.fillText(
+            labelText,
+            25,
+            49,
+            225
+        );
+
+        context.strokeStyle = "rgba(218, 230, 232, 0.95)";
+        context.beginPath();
+        context.moveTo(270, 48);
+        context.lineTo(432, 48);
+        context.stroke();
+
+        context.beginPath();
+        context.arc(444, 48, 11, 0, Math.PI * 2);
+        context.stroke();
+
+    } else {
+
+        context.fillStyle = backgroundColor;
+        context.beginPath();
+        context.moveTo(225, 16);
+        context.lineTo(468, 16);
+        context.lineTo(468, 80);
+        context.lineTo(225, 80);
+        context.quadraticCurveTo(210, 80, 210, 65);
+        context.lineTo(210, 31);
+        context.quadraticCurveTo(210, 16, 225, 16);
+        context.closePath();
+        context.fill();
+
+        context.font = "600 34px 'Microsoft JhengHei', sans-serif";
+        context.textBaseline = "middle";
+        context.fillStyle = "#263238";
+        context.fillText(
+            labelText,
+            232,
+            49,
+            225
+        );
+
+        context.strokeStyle = "rgba(218, 230, 232, 0.95)";
+        context.beginPath();
+        context.arc(36, 48, 11, 0, Math.PI * 2);
+        context.stroke();
+
+        context.beginPath();
+        context.moveTo(48, 48);
+        context.lineTo(210, 48);
+        context.stroke();
+
+    }
+
+    const texture =
+        new THREE.CanvasTexture(canvas);
+
+    texture.colorSpace =
+        THREE.SRGBColorSpace;
+
+    const sprite =
+        new THREE.Sprite(
+            new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false,
+                toneMapped: false
+            })
+        );
+
+    sprite.visible =
+        areButtonLabelsVisible;
+
+    const modelBox =
+        new THREE.Box3()
+            .setFromObject(model);
+
+    const modelSize =
+        new THREE.Vector3();
+
+    modelBox.getSize(modelSize);
+
+    const spriteWidth =
+        Math.max(modelSize.y * 0.52, 0.28);
+
+    sprite.scale.set(
+        spriteWidth,
+        spriteWidth * canvas.height / canvas.width,
+        1
+    );
+
+    const worldPosition =
+        new THREE.Vector3();
+
+    button.getWorldPosition(
+        worldPosition
+    );
+
+    const horizontalOffset =
+        textSide === "left"
+            ? -spriteWidth * 0.42
+            : spriteWidth * 0.42;
+
+    worldPosition.add(
+        new THREE.Vector3(
+            horizontalOffset,
+            verticalOffset,
+            buttonHitRadius * 0.15
+        )
+    );
+
+    attachAtWorldPosition(
+        model,
+        sprite,
+        worldPosition
+    );
+
+    sprite.renderOrder = 30;
+    buttonLabelSprites.push(sprite);
 
 }
 
@@ -1146,6 +1374,8 @@ function createGlowSprite(color, size) {
 function setupRemoteButtons(model) {
 
     // 清除舊 Hit Area
+    clearButtonLabels();
+
     buttonHitAreas.forEach(
         (hitArea) => {
 
@@ -1183,6 +1413,21 @@ function setupRemoteButtons(model) {
         "Button_Memory_3"
 
     ];
+
+    const buttonLabels = {
+        Button_Brighten: {
+            text: "調亮",
+            color: "#fff0b3"
+        },
+        Button_Dim: {
+            text: "調暗",
+            color: "#fff0b3"
+        },
+        Button_Power: {
+            text: "燈具電源",
+            color: "#ffb6b6"
+        }
+    };
 
 
     // --------------------------------------------------
@@ -1237,6 +1482,37 @@ function setupRemoteButtons(model) {
                 );
 
                 return;
+
+            }
+
+            const memoryMatch =
+                name.match(
+                    /^Button_Memory_(\d+)$/
+                );
+
+            if (memoryMatch) {
+
+                createButtonCallout(
+                    model,
+                    button,
+                    `情境切換 ${memoryMatch[1]}`,
+                    "left",
+                    -buttonHitRadius * 0.35,
+                    "#b7e4c7"
+                );
+
+            }
+
+            if (buttonLabels[name]) {
+
+                createButtonCallout(
+                    model,
+                    button,
+                    buttonLabels[name].text,
+                    "right",
+                    0,
+                    buttonLabels[name].color
+                );
 
             }
 
@@ -1876,6 +2152,17 @@ function setupGroupButtonLEDs(model) {
             continue;
 
         }
+
+        createButtonCallout(
+            model,
+            button,
+            `燈具群組 ${i}`,
+            i <= 2
+                ? "left"
+                : "right",
+            0,
+            "#add8e6"
+        );
 
 
         const worldPosition =
