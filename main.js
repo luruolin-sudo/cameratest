@@ -351,6 +351,8 @@ let lastSelectedLightingGroup = null;
 
 const additionalGroupFixtureMaterials = new Map();
 
+const groupLightMarkers = new Map();
+
 const additionalGroupFadeOuts = new Map();
 
 const GROUP_LIGHT_FADE_DURATION = 800;
@@ -799,8 +801,159 @@ function clearAdditionalModelLights() {
         }
     );
 
+    groupLightMarkers.forEach(
+        (marker) => {
+
+            marker.sprite.removeFromParent();
+            marker.sprite.material.map.dispose();
+            marker.sprite.material.dispose();
+
+        }
+    );
+
     additionalModelLights.length = 0;
+    groupLightMarkers.clear();
     additionalGroupFadeOuts.clear();
+
+}
+
+
+function updateGroupLightMarker(groupNumber, isSelected) {
+
+    const marker =
+        groupLightMarkers.get(groupNumber);
+
+    if (!marker) {
+        return;
+    }
+
+    const context =
+        marker.canvas.getContext("2d");
+
+    context.clearRect(
+        0,
+        0,
+        marker.canvas.width,
+        marker.canvas.height
+    );
+
+    context.beginPath();
+    context.arc(48, 48, 41, 0, Math.PI * 2);
+    context.fillStyle =
+        isSelected
+            ? "#72c9f0"
+            : "rgba(85, 101, 110, 0.72)";
+    context.fill();
+
+    context.lineWidth = 5;
+    context.strokeStyle =
+        isSelected
+            ? "#e8f8ff"
+            : "rgba(225, 235, 238, 0.75)";
+    context.stroke();
+
+    context.fillStyle = "#ffffff";
+    context.font = "700 52px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(
+        String(groupNumber),
+        48,
+        50
+    );
+
+    marker.texture.needsUpdate = true;
+    marker.sprite.material.opacity =
+        isSelected ? 1 : 0.62;
+
+}
+
+
+function createGroupLightMarker(model, lightNode, groupNumber) {
+
+    const canvas =
+        document.createElement("canvas");
+
+    canvas.width = 96;
+    canvas.height = 96;
+
+    const texture =
+        new THREE.CanvasTexture(canvas);
+
+    texture.colorSpace =
+        THREE.SRGBColorSpace;
+
+    const sprite =
+        new THREE.Sprite(
+            new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false,
+                toneMapped: false
+            })
+        );
+
+    const markerSize =
+        new THREE.Box3()
+            .setFromObject(model)
+            .getSize(new THREE.Vector3())
+            .y * 0.055;
+
+    sprite.scale.set(
+        markerSize,
+        markerSize,
+        1
+    );
+
+    const worldPosition =
+        new THREE.Vector3();
+
+    lightNode.getWorldPosition(
+        worldPosition
+    );
+
+    const markerOffsetX =
+        groupNumber === 4
+            ? markerSize * 1.4
+            : markerSize * 0.8;
+
+    const markerOffsetY =
+        groupNumber === 2
+            ? markerSize * 1.05
+            : groupNumber === 4
+                ? -markerSize * 0.2
+                : markerSize * 0.8;
+
+    worldPosition.add(
+        new THREE.Vector3(
+            markerOffsetX,
+            markerOffsetY,
+            0
+        )
+    );
+
+    attachAtWorldPosition(
+        model,
+        sprite,
+        worldPosition
+    );
+
+    sprite.renderOrder = 40;
+
+    groupLightMarkers.set(
+        groupNumber,
+        {
+            canvas,
+            texture,
+            sprite
+        }
+    );
+
+    updateGroupLightMarker(
+        groupNumber,
+        selectedLightingGroups.has(groupNumber)
+    );
 
 }
 
@@ -933,6 +1086,23 @@ function setupAdditionalModelLights(model) {
                         /^Light_Group_(\d+)_/
                     )[1]
                 );
+
+            const markerGroupNumber = {
+                Light_Group_1_01: 1,
+                Light_Group_2_02: 2,
+                Light_Group_3_01: 3,
+                Light_Group_4_03: 4
+            }[lightNode.name];
+
+            if (markerGroupNumber !== undefined) {
+
+                createGroupLightMarker(
+                    model,
+                    lightNode,
+                    markerGroupNumber
+                );
+
+            }
 
             const lightColor =
                 [1, 3, 4].includes(groupNumber)
@@ -1428,6 +1598,11 @@ function updateGroupButtonIndicators() {
                 selectedLightingGroups.has(
                     ledInfo.index
                 );
+
+            updateGroupLightMarker(
+                ledInfo.index,
+                isSelected
+            );
 
             const intensity =
                 isSelected
@@ -3471,25 +3646,25 @@ renderer.domElement.addEventListener(
 const initialModelPositions = {
     desktop: {
         original: {
-            x: -0.9,
-            y: -0.8,
+            x: -1.7,
+            y: -0.2,
             z: -3.5
         },
         additional: {
-            x: 0,
-            y: 0.22,
-            z: -5
+            x: 1.4,
+            y: 0,
+            z: -7
         }
     },
     mobile: {
         original: {
             x: -0,
             y: -0.9,
-            z: -1.2
+            z: -1.1
         },
         additional: {
             x: 0,
-            y: 0,
+            y: -0.2,
             z: -10
         }
     }

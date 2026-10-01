@@ -225,9 +225,17 @@ canvas {
     z-index: 9999;
   }
 
+  #memory-label-toggle,
   #adjustments-toggle {
-    top: 66px;
+    top: 55px;
     right: 12px;
+    width: 140px;
+    box-sizing: border-box;
+    justify-content: space-between;
+  }
+
+  #memory-label-toggle {
+    top: 12px;
   }
 
   .icon-cube,
