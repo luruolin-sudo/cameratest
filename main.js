@@ -874,6 +874,12 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     const context =
         marker.canvas.getContext("2d");
 
+    const markerScale =
+        isMobile ? 2 : 1;
+
+    const markerCenter =
+        48 * markerScale;
+
     context.clearRect(
         0,
         0,
@@ -882,14 +888,20 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     );
 
     context.beginPath();
-    context.arc(48, 48, 41, 0, Math.PI * 2);
+    context.arc(
+        markerCenter,
+        markerCenter,
+        41 * markerScale,
+        0,
+        Math.PI * 2
+    );
     context.fillStyle =
         isSelected
             ? "#72c9f0"
             : "rgba(85, 101, 110, 0.72)";
     context.fill();
 
-    context.lineWidth = 5;
+    context.lineWidth = 5 * markerScale;
     context.strokeStyle =
         isSelected
             ? "#e8f8ff"
@@ -898,14 +910,14 @@ function updateGroupLightMarker(groupNumber, isSelected) {
 
     context.fillStyle = "#ffffff";
     context.font = isMobile
-        ? "700 78px sans-serif"
+        ? "700 156px sans-serif"
         : "700 52px sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(
         String(groupNumber),
-        48,
-        50
+        markerCenter,
+        50 * markerScale
     );
 
     marker.texture.needsUpdate = true;
@@ -920,8 +932,11 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
     const canvas =
         document.createElement("canvas");
 
-    canvas.width = 96;
-    canvas.height = 96;
+    const markerScale =
+        isMobile ? 2 : 1;
+
+    canvas.width = 96 * markerScale;
+    canvas.height = 96 * markerScale;
 
     const texture =
         new THREE.CanvasTexture(canvas);
@@ -947,8 +962,8 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
             .y * 0.055;
 
     sprite.scale.set(
-        markerSize,
-        markerSize,
+        markerSize * markerScale,
+        markerSize * markerScale,
         1
     );
 
@@ -973,8 +988,8 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
 
     worldPosition.add(
         new THREE.Vector3(
-            markerOffsetX,
-            markerOffsetY,
+            markerOffsetX * markerScale,
+            markerOffsetY * markerScale,
             0
         )
     );
