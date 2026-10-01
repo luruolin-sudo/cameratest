@@ -48,14 +48,13 @@ canvas {
 }
 
 #memory-label-toggle {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 25;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  width: 176px;
   padding: 10px 14px;
+  box-sizing: border-box;
+  justify-content: space-between;
   border: 1px solid rgba(235, 245, 245, 0.35);
   border-radius: 6px;
   color: #f4f7f7;
@@ -82,14 +81,13 @@ canvas {
 }
 
 #adjustments-toggle {
-  position: fixed;
-  top: 66px;
-  right: 20px;
-  z-index: 25;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  width: 176px;
   padding: 10px 14px;
+  box-sizing: border-box;
+  justify-content: space-between;
   border: 1px solid rgba(235, 245, 245, 0.35);
   border-radius: 6px;
   color: #f4f7f7;
@@ -113,6 +111,47 @@ canvas {
 .adjustments-toggle-state {
   color: #b8d9d6;
   font-size: 12px;
+}
+
+#utility-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#utility-panel[hidden] {
+  display: none;
+}
+
+#utility-drawer-toggle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  z-index: 26;
+  width: 28px;
+  height: 54px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(235, 245, 245, 0.4);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  color: #f4f7f7;
+  background: rgba(25, 32, 35, 0.9);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+#utility-drawer-toggle:hover {
+  background: rgba(49, 65, 69, 0.98);
+}
+
+#utility-drawer-toggle:focus-visible {
+  outline: 2px solid #d7eeee;
+  outline-offset: -3px;
 }
 
 /* ================================
@@ -225,17 +264,22 @@ canvas {
     z-index: 9999;
   }
 
-  #memory-label-toggle,
-  #adjustments-toggle {
-    top: 55px;
-    right: 12px;
-    width: 140px;
-    box-sizing: border-box;
-    justify-content: space-between;
+  #utility-panel {
+    top: 12px;
+    right: 36px;
+    gap: 8px;
   }
 
-  #memory-label-toggle {
-    top: 12px;
+  #memory-label-toggle,
+  #adjustments-toggle {
+    width: 140px;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  #utility-drawer-toggle {
+    width: 26px;
+    height: 50px;
   }
 
   .icon-cube,

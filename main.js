@@ -389,6 +389,50 @@ const memoryLabelToggle =
         "memory-label-toggle"
     );
 
+const utilityDrawerToggle =
+    document.getElementById(
+        "utility-drawer-toggle"
+    );
+
+const utilityPanel =
+    document.getElementById(
+        "utility-panel"
+    );
+
+if (utilityDrawerToggle && utilityPanel) {
+
+    utilityDrawerToggle.addEventListener(
+        "click",
+        () => {
+
+            const shouldOpen =
+                utilityPanel.hidden;
+
+            utilityPanel.hidden =
+                !shouldOpen;
+
+            utilityDrawerToggle.textContent =
+                shouldOpen
+                    ? ">"
+                    : "<";
+
+            utilityDrawerToggle.setAttribute(
+                "aria-expanded",
+                String(shouldOpen)
+            );
+
+            utilityDrawerToggle.setAttribute(
+                "aria-label",
+                shouldOpen
+                    ? "隱藏其他控制"
+                    : "顯示其他控制"
+            );
+
+        }
+    );
+
+}
+
 if (memoryLabelToggle) {
 
     memoryLabelToggle.addEventListener(
@@ -853,7 +897,9 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     context.stroke();
 
     context.fillStyle = "#ffffff";
-    context.font = "700 52px sans-serif";
+    context.font = isMobile
+        ? "700 78px sans-serif"
+        : "700 52px sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(

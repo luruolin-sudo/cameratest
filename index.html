@@ -18,15 +18,21 @@
     <span>模型讀取中…</span>
   </div>
 
-  <button id="memory-label-toggle" type="button" aria-pressed="true">
-    說明切換
-    <span class="memory-label-toggle-state">顯示中</span>
+  <button id="utility-drawer-toggle" type="button" aria-expanded="false" aria-label="顯示其他控制">
+    &lt;
   </button>
 
-  <button id="adjustments-toggle" type="button" aria-expanded="false">
-    其他調整
-    <span class="adjustments-toggle-state">已隱藏</span>
-  </button>
+  <div id="utility-panel" hidden>
+    <button id="memory-label-toggle" type="button" aria-pressed="true">
+      說明切換
+      <span class="memory-label-toggle-state">顯示中</span>
+    </button>
+
+    <button id="adjustments-toggle" type="button" aria-expanded="false">
+      其他調整
+      <span class="adjustments-toggle-state">已隱藏</span>
+    </button>
+  </div>
 
   <!-- ✅ 底部中間 ICON + 滑桿 -->
   <div id="icon-row" hidden>
