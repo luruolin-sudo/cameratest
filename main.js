@@ -3312,6 +3312,29 @@ function updateLoadingOverlay(isLoading) {
 }
 
 
+function prewarmSceneShaders() {
+
+    if (typeof renderer.compileAsync !== "function") {
+        return Promise.resolve();
+    }
+
+    return renderer.compileAsync(
+        scene,
+        camera
+    ).catch(
+        (error) => {
+
+            console.warn(
+                "場景預熱未完成，將於首次顯示時編譯：",
+                error
+            );
+
+        }
+    );
+
+}
+
+
 function loadModel(
     modelPath,
     addToScene = false,
@@ -3397,14 +3420,8 @@ function loadModel(
                     newModel
                 );
 
-                pendingModelLoads =
-                    Math.max(
-                        0,
-                        pendingModelLoads - 1
-                    );
-
-                updateLoadingOverlay(
-                    pendingModelLoads > 0
+                prewarmSceneShaders().finally(
+                    finishModelLoad
                 );
 
                 return;
@@ -3493,14 +3510,8 @@ function loadModel(
                 "遙控器 GLB 載入完成"
             );
 
-            pendingModelLoads =
-                Math.max(
-                    0,
-                    pendingModelLoads - 1
-                );
-
-            updateLoadingOverlay(
-                pendingModelLoads > 0
+            prewarmSceneShaders().finally(
+                finishModelLoad
             );
 
         },
@@ -3516,19 +3527,25 @@ function loadModel(
                 error
             );
 
-            pendingModelLoads =
-                Math.max(
-                    0,
-                    pendingModelLoads - 1
-                );
-
-            updateLoadingOverlay(
-                pendingModelLoads > 0
-            );
+            finishModelLoad();
 
         }
 
     );
+
+    function finishModelLoad() {
+
+        pendingModelLoads =
+            Math.max(
+                0,
+                pendingModelLoads - 1
+            );
+
+        updateLoadingOverlay(
+            pendingModelLoads > 0
+        );
+
+    }
 
 }
 
