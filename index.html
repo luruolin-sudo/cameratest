@@ -23,8 +23,13 @@
     <span class="memory-label-toggle-state">顯示中</span>
   </button>
 
+  <button id="adjustments-toggle" type="button" aria-expanded="false">
+    其他調整
+    <span class="adjustments-toggle-state">已隱藏</span>
+  </button>
+
   <!-- ✅ 底部中間 ICON + 滑桿 -->
-  <div id="icon-row">
+  <div id="icon-row" hidden>
     <div class="top-icon">
       <img src="./icons/icon-cube.svg" class="icon-cube">
       <input type="range" id="rotateSpeed" min="0" max="25" step="1" value="0">

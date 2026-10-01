@@ -67,11 +67,20 @@ const isMobile =
 const cameraZ =
     isMobile ? 3.0 : 0.9;
 
+// 手機俯視高度；0.8 約為 15 度，可調大或調小
+const cameraY =
+    isMobile ? 0.8 : 0;
+
+const mobileCameraTiltCompensation =
+    isMobile
+        ? -Math.atan2(cameraY, cameraZ)
+        : 0;
+
 
 // 保持正面
 camera.position.set(
     0,
-    0,
+    cameraY,
     cameraZ
 );
 
@@ -121,6 +130,9 @@ controls.dampingFactor = 0.05;
 const maxOrbitAngle =
     THREE.MathUtils.degToRad(5);
 
+const initialPolarAngle =
+    Math.atan2(cameraZ, cameraY);
+
 controls.minAzimuthAngle =
     -maxOrbitAngle;
 
@@ -128,10 +140,10 @@ controls.maxAzimuthAngle =
     maxOrbitAngle;
 
 controls.minPolarAngle =
-    Math.PI / 2 - maxOrbitAngle;
+    initialPolarAngle - maxOrbitAngle;
 
 controls.maxPolarAngle =
-    Math.PI / 2 + maxOrbitAngle;
+    initialPolarAngle + maxOrbitAngle;
 
 controls.minDistance = 1;
 controls.maxDistance = 10;
@@ -175,6 +187,7 @@ if (rotateSpeedUI) {
             if (currentModel) {
 
                 currentModel.rotation.x =
+                    mobileCameraTiltCompensation +
                     THREE.MathUtils.degToRad(
                         settings.tiltAngle
                     );
@@ -415,6 +428,51 @@ if (memoryLabelToggle) {
 }
 
 
+const adjustmentsToggle =
+    document.getElementById(
+        "adjustments-toggle"
+    );
+
+const adjustmentsPanel =
+    document.getElementById(
+        "icon-row"
+    );
+
+if (adjustmentsToggle && adjustmentsPanel) {
+
+    adjustmentsToggle.addEventListener(
+        "click",
+        () => {
+
+            const shouldShow =
+                adjustmentsPanel.hidden;
+
+            adjustmentsPanel.hidden =
+                !shouldShow;
+
+            adjustmentsToggle.setAttribute(
+                "aria-expanded",
+                String(shouldShow)
+            );
+
+            const stateLabel =
+                adjustmentsToggle.querySelector(
+                    ".adjustments-toggle-state"
+                );
+
+            if (stateLabel) {
+                stateLabel.textContent =
+                    shouldShow
+                        ? "顯示中"
+                        : "已隱藏";
+            }
+
+        }
+    );
+
+}
+
+
 // ======================================================
 // 尺寸參數
 // ======================================================
@@ -466,13 +524,94 @@ function createButtonCallout(
     labelText,
     textSide = "left",
     verticalOffset = 0,
-    backgroundColor = "#ffffff"
+    backgroundColor = "#ffffff",
+    horizontalReferenceButton = null,
+    verticalReferenceButton = null
 ) {
+
+    const modelBox =
+        new THREE.Box3()
+            .setFromObject(model);
+
+    const modelSize =
+        new THREE.Vector3();
+
+    modelBox.getSize(modelSize);
+
+    const spriteWidth =
+        Math.max(modelSize.y * 0.52, 0.28);
+
+    let lineExtensionPixels = 0;
+    let horizontalAlignmentOffset = 0;
+    let verticalAlignmentPosition = null;
+
+    if (
+        horizontalReferenceButton ||
+        verticalReferenceButton
+    ) {
+
+        model.updateWorldMatrix(true, true);
+
+        const buttonLocalPosition =
+            model.worldToLocal(
+                button.getWorldPosition(
+                    new THREE.Vector3()
+                )
+            );
+
+        if (horizontalReferenceButton) {
+
+            const referenceLocalPosition =
+                model.worldToLocal(
+                    horizontalReferenceButton.getWorldPosition(
+                        new THREE.Vector3()
+                    )
+                );
+
+            const horizontalDifference =
+                buttonLocalPosition.x -
+                referenceLocalPosition.x;
+
+            const alignmentDirection =
+                textSide === "left"
+                    ? 1
+                    : -1;
+
+            lineExtensionPixels =
+                Math.max(
+                    0,
+                    horizontalDifference *
+                        alignmentDirection *
+                        480 /
+                        spriteWidth
+                );
+
+            horizontalAlignmentOffset =
+                -horizontalDifference / 2;
+
+        }
+
+        if (verticalReferenceButton) {
+
+            const referenceLocalPosition =
+                model.worldToLocal(
+                    verticalReferenceButton.getWorldPosition(
+                        new THREE.Vector3()
+                    )
+                );
+
+            verticalAlignmentPosition =
+                referenceLocalPosition.y;
+
+        }
+
+    }
 
     const canvas =
         document.createElement("canvas");
 
-    canvas.width = 480;
+    canvas.width =
+        480 + lineExtensionPixels;
     canvas.height = 96;
 
     const context =
@@ -509,24 +648,46 @@ function createButtonCallout(
         context.strokeStyle = "rgba(218, 230, 232, 0.95)";
         context.beginPath();
         context.moveTo(270, 48);
-        context.lineTo(432, 48);
+        context.lineTo(
+            432 + lineExtensionPixels,
+            48
+        );
         context.stroke();
 
         context.beginPath();
-        context.arc(444, 48, 11, 0, Math.PI * 2);
+        context.arc(
+            444 + lineExtensionPixels,
+            48,
+            11,
+            0,
+            Math.PI * 2
+        );
         context.stroke();
 
     } else {
 
         context.fillStyle = backgroundColor;
         context.beginPath();
-        context.moveTo(225, 16);
-        context.lineTo(468, 16);
-        context.lineTo(468, 80);
-        context.lineTo(225, 80);
-        context.quadraticCurveTo(210, 80, 210, 65);
-        context.lineTo(210, 31);
-        context.quadraticCurveTo(210, 16, 225, 16);
+        context.moveTo(225 + lineExtensionPixels, 16);
+        context.lineTo(468 + lineExtensionPixels, 16);
+        context.lineTo(468 + lineExtensionPixels, 80);
+        context.lineTo(225 + lineExtensionPixels, 80);
+        context.quadraticCurveTo(
+            210 + lineExtensionPixels,
+            80,
+            210 + lineExtensionPixels,
+            65
+        );
+        context.lineTo(
+            210 + lineExtensionPixels,
+            31
+        );
+        context.quadraticCurveTo(
+            210 + lineExtensionPixels,
+            16,
+            225 + lineExtensionPixels,
+            16
+        );
         context.closePath();
         context.fill();
 
@@ -535,7 +696,7 @@ function createButtonCallout(
         context.fillStyle = "#263238";
         context.fillText(
             labelText,
-            232,
+            232 + lineExtensionPixels,
             49,
             225
         );
@@ -547,7 +708,10 @@ function createButtonCallout(
 
         context.beginPath();
         context.moveTo(48, 48);
-        context.lineTo(210, 48);
+        context.lineTo(
+            210 + lineExtensionPixels,
+            48
+        );
         context.stroke();
 
     }
@@ -572,21 +736,9 @@ function createButtonCallout(
     sprite.visible =
         areButtonLabelsVisible;
 
-    const modelBox =
-        new THREE.Box3()
-            .setFromObject(model);
-
-    const modelSize =
-        new THREE.Vector3();
-
-    modelBox.getSize(modelSize);
-
-    const spriteWidth =
-        Math.max(modelSize.y * 0.52, 0.28);
-
     sprite.scale.set(
-        spriteWidth,
-        spriteWidth * canvas.height / canvas.width,
+        spriteWidth * canvas.width / 480,
+        spriteWidth * canvas.height / 480,
         1
     );
 
@@ -610,11 +762,24 @@ function createButtonCallout(
         )
     );
 
-    attachAtWorldPosition(
-        model,
-        sprite,
-        worldPosition
+    model.updateWorldMatrix(true, true);
+
+    sprite.position.copy(
+        model.worldToLocal(worldPosition)
     );
+
+    sprite.position.x +=
+        horizontalAlignmentOffset;
+
+    if (verticalAlignmentPosition !== null) {
+        sprite.position.y =
+            verticalAlignmentPosition;
+    }
+
+    sprite.userData.buttonName =
+        button.name;
+
+    model.add(sprite);
 
     sprite.renderOrder = 30;
     buttonLabelSprites.push(sprite);
@@ -1492,13 +1657,23 @@ function setupRemoteButtons(model) {
 
             if (memoryMatch) {
 
+                const pairedControlButton = [
+                    "Button_Brighten",
+                    "Button_Dim",
+                    "Button_Power"
+                ][Number(memoryMatch[1]) - 1];
+
                 createButtonCallout(
                     model,
                     button,
                     `情境切換 ${memoryMatch[1]}`,
                     "left",
                     -buttonHitRadius * 0.35,
-                    "#b7e4c7"
+                    "#b7e4c7",
+                    null,
+                    model.getObjectByName(
+                        pairedControlButton
+                    )
                 );
 
             }
@@ -2161,7 +2336,16 @@ function setupGroupButtonLEDs(model) {
                 ? "left"
                 : "right",
             0,
-            "#add8e6"
+            "#add8e6",
+            i === 2
+                ? model.getObjectByName(
+                    "Button_Group_1"
+                )
+                : i === 4
+                    ? model.getObjectByName(
+                        "Button_Group_3"
+                    )
+                : null
         );
 
 
@@ -2945,7 +3129,10 @@ function handleRemotePointer(event) {
 
     const intersections =
         raycaster.intersectObjects(
-            buttonHitAreas,
+            [
+                ...buttonHitAreas,
+                ...buttonLabelSprites
+            ],
             false
         );
 
@@ -3282,20 +3469,37 @@ renderer.domElement.addEventListener(
 // ======================================================
 
 const initialModelPositions = {
-    original: {
-        x: -0.6,
-        y: -0.3,
-        z: -2.2,
+    desktop: {
+        original: {
+            x: -0.9,
+            y: -0.8,
+            z: -3.5
+        },
+        additional: {
+            x: 0,
+            y: 0.22,
+            z: -5
+        }
     },
-    additional: {
-        x: 0,
-        y: 0.22,
-        z: -4.5,
+    mobile: {
+        original: {
+            x: -0,
+            y: -0.9,
+            z: -1.2
+        },
+        additional: {
+            x: 0,
+            y: 0,
+            z: -10
+        }
     }
 };
 
 
 let pendingModelLoads = 0;
+
+let shaderPrewarmQueue =
+    Promise.resolve();
 
 function updateLoadingOverlay(isLoading) {
 
@@ -3318,14 +3522,130 @@ function prewarmSceneShaders() {
         return Promise.resolve();
     }
 
-    return renderer.compileAsync(
-        scene,
-        camera
-    ).catch(
+    shaderPrewarmQueue =
+        shaderPrewarmQueue
+            .catch(() => {})
+            .then(
+                () => renderer.compileAsync(
+                    scene,
+                    camera
+                )
+            );
+
+    return shaderPrewarmQueue.catch(
         (error) => {
 
             console.warn(
                 "場景預熱未完成，將於首次顯示時編譯：",
+                error
+            );
+
+        }
+    );
+
+}
+
+
+function prewarmLightingScenarios() {
+
+    if (
+        typeof renderer.compileAsync !== "function" ||
+        additionalModelLights.length === 0
+    ) {
+
+        return Promise.resolve();
+
+    }
+
+    const originalLightStates =
+        additionalModelLights.map(
+            (lightInfo) => ({
+                isOn: lightInfo.isOn,
+                brightnessLevel:
+                    lightInfo.brightnessLevel
+            })
+        );
+
+    const scenarios = [
+        {
+            groups: [1, 2, 3, 4],
+            brightnessLevel: 8
+        },
+        {
+            groups: [2, 4],
+            brightnessLevel: 8
+        },
+        {
+            groups: [1, 3, 4],
+            brightnessLevel: 3
+        }
+    ];
+
+    const warmScenarios =
+        async () => {
+
+            try {
+
+                for (const scenario of scenarios) {
+
+                    additionalModelLights.forEach(
+                        (lightInfo) => {
+
+                            lightInfo.isOn =
+                                scenario.groups.includes(
+                                    lightInfo.groupNumber
+                                );
+
+                            if (lightInfo.isOn) {
+
+                                lightInfo.brightnessLevel =
+                                    scenario.brightnessLevel;
+
+                            }
+
+                        }
+                    );
+
+                    updateAdditionalModelLighting();
+
+                    await renderer.compileAsync(
+                        scene,
+                        camera
+                    );
+
+                }
+
+            } finally {
+
+                additionalModelLights.forEach(
+                    (lightInfo, index) => {
+
+                        lightInfo.isOn =
+                            originalLightStates[index].isOn;
+
+                        lightInfo.brightnessLevel =
+                            originalLightStates[index]
+                                .brightnessLevel;
+
+                    }
+                );
+
+                updateAdditionalModelLighting();
+
+            }
+
+        };
+
+    shaderPrewarmQueue =
+        shaderPrewarmQueue
+            .catch(() => {})
+            .then(warmScenarios);
+
+    return shaderPrewarmQueue.catch(
+        (error) => {
+
+            console.warn(
+                "情境燈光預熱未完成，首次切換時可能需要編譯：",
                 error
             );
 
@@ -3342,7 +3662,8 @@ function loadModel(
         x: 0,
         y: 0,
         z: 0
-    }
+    },
+    rotationY = -20
 ) {
 
     pendingModelLoads++;
@@ -3381,11 +3702,12 @@ function loadModel(
             newModel.rotation.set(
                 addToScene
                     ? 0
-                    : THREE.MathUtils.degToRad(
-                        settings.tiltAngle
-                    ),
+                    : mobileCameraTiltCompensation +
+                        THREE.MathUtils.degToRad(
+                            settings.tiltAngle
+                        ),
                 addToScene
-                    ? THREE.MathUtils.degToRad(-20)
+                    ? THREE.MathUtils.degToRad(rotationY)
                     : 0,
                 0
             );
@@ -3416,13 +3738,11 @@ function loadModel(
 
             if (addToScene) {
 
-                setupAdditionalModelLights(
-                    newModel
-                );
+                setupAdditionalModelLights(newModel);
 
-                prewarmSceneShaders().finally(
-                    finishModelLoad
-                );
+                prewarmLightingScenarios()
+                    .then(prewarmSceneShaders)
+                    .finally(finishModelLoad);
 
                 return;
             }
@@ -3554,16 +3874,22 @@ function loadModel(
 // 預設載入
 // ======================================================
 
+const activeModelPositions =
+    isMobile
+        ? initialModelPositions.mobile
+        : initialModelPositions.desktop;
+
 loadModel(
     "https://dl.dropboxusercontent.com/scl/fi/ni1wbk8s6u21i6vhhvnzh/.glb?rlkey=d704a60hxrx9e47ulvuehkw8z&dl=1",
     false,
-    initialModelPositions.original
+    activeModelPositions.original
 );
 
 loadModel(
     "https://dl.dropboxusercontent.com/scl/fi/va4lgm3kaetcm4gjxhgz6/.glb?rlkey=wny1jiqvk1bo76xpt5xwtfg0i&dl=1",
     true,
-    initialModelPositions.additional
+    activeModelPositions.additional,
+    isMobile ? -5 : -20
 );
 
 
