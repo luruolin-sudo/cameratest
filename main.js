@@ -3646,12 +3646,12 @@ renderer.domElement.addEventListener(
 const initialModelPositions = {
     desktop: {
         original: {
-            x: -1.7,
+            x: -1.75,
             y: -0.2,
             z: -3.5
         },
         additional: {
-            x: 1.4,
+            x: 1.55,
             y: 0,
             z: -7
         }
