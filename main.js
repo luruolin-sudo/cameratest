@@ -126,6 +126,7 @@ const controls =
 
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+controls.enableRotate = !isMobile;
 
 const maxOrbitAngle =
     THREE.MathUtils.degToRad(5);
@@ -366,6 +367,12 @@ const FIXTURE_EMISSIVE_FADE_DURATION = 600;
 let groupButtonFlashLED = null;
 
 let groupButtonFlashTimer = null;
+
+let remoteFillLight = null;
+
+let remoteFillLightSource = null;
+
+let remoteFillLightTarget = null;
 
 let remoteSleepTimer = null;
 
@@ -845,6 +852,15 @@ function clearAdditionalModelLights() {
         }
     );
 
+    if (remoteFillLight) {
+
+        remoteFillLight.removeFromParent();
+        remoteFillLight = null;
+
+    }
+
+    remoteFillLightSource = null;
+
     groupLightMarkers.forEach(
         (marker) => {
 
@@ -858,6 +874,81 @@ function clearAdditionalModelLights() {
     additionalModelLights.length = 0;
     groupLightMarkers.clear();
     additionalGroupFadeOuts.clear();
+
+}
+
+
+function connectRemoteFillLight() {
+
+    if (
+        !remoteFillLightSource ||
+        !remoteFillLightTarget
+    ) {
+
+        return;
+
+    }
+
+    if (!remoteFillLight) {
+
+        remoteFillLight =
+            new THREE.RectAreaLight(
+                0xffffff,
+                0,
+                1,
+                1
+            );
+
+        scene.add(
+            remoteFillLight
+        );
+
+    }
+
+    updateRemoteFillLight();
+
+}
+
+
+function updateRemoteFillLight() {
+
+    if (
+        !remoteFillLight ||
+        !remoteFillLightSource ||
+        !remoteFillLightTarget
+    ) {
+
+        return;
+
+    }
+
+    remoteFillLightSource.updateWorldMatrix(
+        true,
+        false
+    );
+
+    remoteFillLightTarget.updateWorldMatrix(
+        true,
+        false
+    );
+
+    const sourcePosition =
+        remoteFillLightSource.getWorldPosition(
+            new THREE.Vector3()
+        );
+
+    const targetPosition =
+        remoteFillLightTarget.getWorldPosition(
+            new THREE.Vector3()
+        );
+
+    remoteFillLight.position.copy(
+        sourcePosition
+    );
+
+    remoteFillLight.lookAt(
+        targetPosition
+    );
 
 }
 
@@ -1024,6 +1115,32 @@ function setupAdditionalModelLights(model) {
     clearAdditionalModelLights();
 
     additionalGroupFixtureMaterials.clear();
+
+    remoteFillLightSource =
+        model.getObjectByName(
+            "led object_01"
+        );
+
+    if (!remoteFillLightSource) {
+
+        model.traverse(
+            (object) => {
+
+                if (
+                    !remoteFillLightSource &&
+                    object.name.toLowerCase() ===
+                    "led object_01"
+                ) {
+
+                    remoteFillLightSource =
+                        object;
+
+                }
+
+            }
+        );
+
+    }
 
     model.traverse(
         (fixtureNode) => {
@@ -1259,6 +1376,7 @@ function setupAdditionalModelLights(model) {
         `總共建立 ${additionalModelLights.length} 盞額外燈具`
     );
 
+    connectRemoteFillLight();
     updateAdditionalModelLighting();
     syncBrightnessFeedback();
 
@@ -2771,6 +2889,49 @@ function setupGroupFlashLED(model) {
 
     }
 
+    remoteFillLightTarget =
+        led;
+
+    if (!remoteFillLightSource) {
+
+        remoteFillLightSource =
+            model.getObjectByName(
+                "led object_01"
+            );
+
+        if (!remoteFillLightSource) {
+
+            model.traverse(
+                (object) => {
+
+                    if (
+                        !remoteFillLightSource &&
+                        object.name.toLowerCase() ===
+                        "led object_01"
+                    ) {
+
+                        remoteFillLightSource =
+                            object;
+
+                    }
+
+                }
+            );
+
+        }
+
+    }
+
+    if (!remoteFillLightSource) {
+
+        console.warn(
+            "找不到補光來源節點 led object_01"
+        );
+
+    }
+
+    connectRemoteFillLight();
+
 
     const worldPosition =
         new THREE.Vector3();
@@ -2887,7 +3048,6 @@ function setupGroupFlashLED(model) {
         pointLight,
         worldPosition
     );
-
 
     groupButtonFlashLED = {
 
@@ -4198,6 +4358,7 @@ function animate() {
     animateLEDs();
 
     updateAdditionalModelLighting();
+    updateRemoteFillLight();
 
 
     // --------------------------------------------------
