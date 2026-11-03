@@ -455,6 +455,8 @@ if (memoryLabelToggle) {
                 }
             );
 
+            updateGroupButtonIndicators();
+
             memoryLabelToggle.setAttribute(
                 "aria-pressed",
                 String(areButtonLabelsVisible)
@@ -1012,6 +1014,8 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     marker.sprite.material.opacity =
         isSelected ? 1 : 0.62;
 
+    marker.sprite.visible = areButtonLabelsVisible && isSelected;
+
 }
 
 
@@ -1105,6 +1109,8 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
         groupNumber,
         selectedLightingGroups.has(groupNumber)
     );
+
+    sprite.visible = areButtonLabelsVisible && selectedLightingGroups.has(groupNumber);
 
 }
 
