@@ -629,12 +629,13 @@ function createButtonCallout(
                     : -1;
 
             lineExtensionPixels =
-                Math.max(
-                    0,
+                THREE.MathUtils.clamp(
                     horizontalDifference *
                         alignmentDirection *
                         480 /
-                        spriteWidth
+                        spriteWidth,
+                    -160,
+                    480
                 );
 
             horizontalAlignmentOffset =
@@ -1080,13 +1081,11 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
     );
 
     const markerOffsetX =
-        isMobile
-            ? (groupNumber === 4
-                ? markerSize * 1.4
-                : markerSize * 0.6)
-            : (groupNumber === 4
-                ? markerSize * 1.4
-                : markerSize * 0.8);
+        groupNumber === 4
+            ? -markerSize * 1.4
+            : isMobile
+                ? markerSize * 0.6
+                : markerSize * 0.8;
 
     const markerOffsetY =
         isMobile
@@ -2722,16 +2721,16 @@ function setupGroupButtonLEDs(model) {
             model,
             button,
             `燈具群組 ${i}`,
-            i <= 2
+            i === 1 || i === 4
                 ? "left"
                 : "right",
             0,
             "#add8e6",
-            i === 2
+            i === 4
                 ? model.getObjectByName(
                     "Button_Group_1"
                 )
-                : i === 4
+                : i === 2
                     ? model.getObjectByName(
                         "Button_Group_3"
                     )
