@@ -10,7 +10,7 @@ import { EXRLoader } from "./libs/EXRLoader.js";
 
 const settings = {
     tiltAngle: 0,
-    ambientIntensity: 1
+    ambientIntensity: 5
 };
 
 
@@ -69,7 +69,7 @@ const cameraZ =
 
 // 手機俯視高度；0.8 約為 15 度，可調大或調小
 const cameraY =
-    isMobile ? 0.8 : 0;
+    isMobile ? 1.2 : 0;
 
 const mobileCameraTiltCompensation =
     isMobile
@@ -455,8 +455,6 @@ if (memoryLabelToggle) {
                 }
             );
 
-            updateGroupButtonIndicators();
-
             memoryLabelToggle.setAttribute(
                 "aria-pressed",
                 String(areButtonLabelsVisible)
@@ -578,7 +576,8 @@ function createButtonCallout(
     verticalOffset = 0,
     backgroundColor = "#ffffff",
     horizontalReferenceButton = null,
-    verticalReferenceButton = null
+    verticalReferenceButton = null,
+    extraLineLength = 0
 ) {
 
     const modelBox =
@@ -656,6 +655,20 @@ function createButtonCallout(
                 referenceLocalPosition.y;
 
         }
+
+    }
+
+    if (extraLineLength > 0) {
+
+        lineExtensionPixels +=
+            extraLineLength *
+            480 /
+            spriteWidth;
+
+        horizontalAlignmentOffset +=
+            textSide === "left"
+                ? -extraLineLength / 2
+                : extraLineLength / 2;
 
     }
 
@@ -893,9 +906,9 @@ function connectRemoteFillLight() {
         remoteFillLight =
             new THREE.RectAreaLight(
                 0xffffff,
-                0,
-                1,
-                1
+                3000,
+                0.3,
+                0.3
             );
 
         scene.add(
@@ -988,14 +1001,14 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     context.fillStyle =
         isSelected
             ? "#72c9f0"
-            : "rgba(85, 101, 110, 0.72)";
+            : "rgba(85, 101, 110, 0.3)";
     context.fill();
 
     context.lineWidth = 5 * markerScale;
     context.strokeStyle =
         isSelected
             ? "#e8f8ff"
-            : "rgba(225, 235, 238, 0.75)";
+            : "rgba(225, 235, 238, 0.5)";
     context.stroke();
 
     context.fillStyle = "#ffffff";
@@ -1014,7 +1027,7 @@ function updateGroupLightMarker(groupNumber, isSelected) {
     marker.sprite.material.opacity =
         isSelected ? 1 : 0.62;
 
-    marker.sprite.visible = areButtonLabelsVisible && isSelected;
+    marker.sprite.visible = true;
 
 }
 
@@ -1067,16 +1080,26 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
     );
 
     const markerOffsetX =
-        groupNumber === 4
-            ? markerSize * 1.4
-            : markerSize * 0.8;
+        isMobile
+            ? (groupNumber === 4
+                ? markerSize * 1.4
+                : markerSize * 0.6)
+            : (groupNumber === 4
+                ? markerSize * 1.4
+                : markerSize * 0.8);
 
     const markerOffsetY =
-        groupNumber === 2
-            ? markerSize * 1.05
-            : groupNumber === 4
-                ? -markerSize * 0.2
-                : markerSize * 0.8;
+        isMobile
+            ? (groupNumber === 2
+                ? markerSize * 1.0
+                : groupNumber === 4
+                    ? -markerSize * 0.05
+                    : markerSize * 0.7)
+            : (groupNumber === 2
+                ? markerSize * 1.05
+                : groupNumber === 4
+                    ? -markerSize * 0.2
+                    : markerSize * 0.8);
 
     worldPosition.add(
         new THREE.Vector3(
@@ -1110,7 +1133,7 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
         selectedLightingGroups.has(groupNumber)
     );
 
-    sprite.visible = areButtonLabelsVisible && selectedLightingGroups.has(groupNumber);
+    sprite.visible = true;
 
 }
 
@@ -1123,7 +1146,7 @@ function setupAdditionalModelLights(model) {
 
     remoteFillLightSource =
         model.getObjectByName(
-            "led object_01"
+            "Model lights"
         );
 
     if (!remoteFillLightSource) {
@@ -1133,8 +1156,8 @@ function setupAdditionalModelLights(model) {
 
                 if (
                     !remoteFillLightSource &&
-                    object.name.toLowerCase() ===
-                    "led object_01"
+                    object.name.trim().toLowerCase() ===
+                    "model lights"
                 ) {
 
                     remoteFillLightSource =
@@ -1143,6 +1166,14 @@ function setupAdditionalModelLights(model) {
                 }
 
             }
+        );
+
+    }
+
+    if (!remoteFillLightSource) {
+
+        console.warn(
+            "找不到場景面光來源定位點 Model lights"
         );
 
     }
@@ -2704,7 +2735,9 @@ function setupGroupButtonLEDs(model) {
                     ? model.getObjectByName(
                         "Button_Group_3"
                     )
-                : null
+                : null,
+            null,
+            0.15
         );
 
 
@@ -2895,42 +2928,14 @@ function setupGroupFlashLED(model) {
     }
 
     remoteFillLightTarget =
-        led;
+        model.getObjectByName(
+            "Button_Group_3"
+        );
 
-    if (!remoteFillLightSource) {
-
-        remoteFillLightSource =
-            model.getObjectByName(
-                "led object_01"
-            );
-
-        if (!remoteFillLightSource) {
-
-            model.traverse(
-                (object) => {
-
-                    if (
-                        !remoteFillLightSource &&
-                        object.name.toLowerCase() ===
-                        "led object_01"
-                    ) {
-
-                        remoteFillLightSource =
-                            object;
-
-                    }
-
-                }
-            );
-
-        }
-
-    }
-
-    if (!remoteFillLightSource) {
+    if (!remoteFillLightTarget) {
 
         console.warn(
-            "找不到補光來源節點 led object_01"
+            "找不到遙控器補光目標 Button_Group_3"
         );
 
     }
@@ -3267,7 +3272,7 @@ function resetRemoteSleepTimer() {
 // LED 亮度
 // ======================================================
 
-function updateLEDs() {
+function updateLEDs(immediate = false) {
 
     ledData.forEach(
         (ledInfo) => {
@@ -3287,6 +3292,48 @@ function updateLEDs() {
                 shouldBeOn
                     ? 0.45
                     : 0;
+
+            if (immediate && shouldBeOn) {
+
+                ledInfo.currentIntensity =
+                    ledInfo.targetIntensity;
+
+                ledInfo.currentLightIntensity =
+                    ledInfo.targetLightIntensity;
+
+                if (ledInfo.ledMesh) {
+
+                    ledInfo.ledMesh.visible =
+                        !isRemoteSleeping;
+
+                    ledInfo.ledMesh
+                        .material
+                        .emissiveIntensity =
+                            ledInfo.currentIntensity;
+
+                }
+
+                if (ledInfo.glowSprite) {
+
+                    ledInfo.glowSprite.visible =
+                        !isRemoteSleeping;
+
+                    ledInfo.glowSprite
+                        .material
+                        .opacity = 0.7;
+
+                }
+
+                if (ledInfo.pointLight) {
+
+                    ledInfo.pointLight.intensity =
+                        isRemoteSleeping
+                            ? 0
+                            : ledInfo.currentLightIntensity;
+
+                }
+
+            }
 
             if (!shouldBeOn) {
 
@@ -3892,7 +3939,8 @@ const initialModelPositions = {
         original: {
             x: -1.75,
             y: -0.2,
-            z: -3.5
+            z: -3.5,
+            rotationY: 0
         },
         additional: {
             x: 1.55,
@@ -3904,12 +3952,13 @@ const initialModelPositions = {
         original: {
             x: -0,
             y: -0.9,
-            z: -1.1
+            z: -0.5,
+            rotationY: 0
         },
         additional: {
             x: 0,
-            y: -0.2,
-            z: -10
+            y: 0,
+            z: -10.5
         }
     }
 };
@@ -4118,6 +4167,8 @@ function loadModel(
             // 保持 GLB 本身原始角度
             // --------------------------------------------------
 
+            const originalRotationY = position.rotationY !== undefined ? position.rotationY : 0;
+
             newModel.rotation.set(
                 addToScene
                     ? 0
@@ -4127,7 +4178,7 @@ function loadModel(
                         ),
                 addToScene
                     ? THREE.MathUtils.degToRad(rotationY)
-                    : 0,
+                    : THREE.MathUtils.degToRad(originalRotationY),
                 0
             );
 
@@ -4212,6 +4263,7 @@ function loadModel(
             syncBrightnessFeedback();
 
             setRemoteSleeping(false);
+            updateLEDs(true);
             resetRemoteSleepTimer();
 
 
@@ -4299,7 +4351,7 @@ const activeModelPositions =
         : initialModelPositions.desktop;
 
 loadModel(
-    "https://dl.dropboxusercontent.com/scl/fi/ni1wbk8s6u21i6vhhvnzh/.glb?rlkey=d704a60hxrx9e47ulvuehkw8z&dl=1",
+    "https://dl.dropboxusercontent.com/scl/fi/vc9l6peljs3v6s303mhd8/1103.glb?rlkey=zoxlfrwdn7p8g69e6xzkbdchq&dl=1",
     false,
     activeModelPositions.original
 );
