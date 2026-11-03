@@ -126,7 +126,7 @@ const controls =
 
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.enableRotate = !isMobile;
+controls.enableRotate = false;
 
 const maxOrbitAngle =
     THREE.MathUtils.degToRad(5);
@@ -224,9 +224,6 @@ if (ambientIntensityUI) {
             ambientLight.intensity =
                 val;
 
-            renderer.toneMappingExposure =
-                val;
-
         }
     );
 
@@ -290,7 +287,7 @@ new EXRLoader()
                 envMap;
 
             scene.background =
-                new THREE.Color(0x272727);
+                new THREE.Color(0x2b313d);
 
             texture.dispose();
 
@@ -966,7 +963,7 @@ function updateGroupLightMarker(groupNumber, isSelected) {
         marker.canvas.getContext("2d");
 
     const markerScale =
-        isMobile ? 2 : 1;
+        isMobile ? 4 : 2;
 
     const markerCenter =
         48 * markerScale;
@@ -1001,8 +998,8 @@ function updateGroupLightMarker(groupNumber, isSelected) {
 
     context.fillStyle = "#ffffff";
     context.font = isMobile
-        ? "700 156px sans-serif"
-        : "700 52px sans-serif";
+        ? `700 ${156 * markerScale / 2}px sans-serif`
+        : `700 ${52 * markerScale}px sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(
@@ -1024,7 +1021,7 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
         document.createElement("canvas");
 
     const markerScale =
-        isMobile ? 2 : 1;
+        isMobile ? 4 : 2;
 
     canvas.width = 96 * markerScale;
     canvas.height = 96 * markerScale;
@@ -1092,6 +1089,8 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
     );
 
     sprite.renderOrder = 40;
+
+    sprite.userData.groupNumber = groupNumber;
 
     groupLightMarkers.set(
         groupNumber,
@@ -3527,7 +3526,8 @@ function handleRemotePointer(event) {
         raycaster.intersectObjects(
             [
                 ...buttonHitAreas,
-                ...buttonLabelSprites
+                ...buttonLabelSprites,
+                ...Array.from(groupLightMarkers.values()).map(m => m.sprite)
             ],
             false
         );
@@ -3549,8 +3549,11 @@ function handleRemotePointer(event) {
     const buttonName =
         hit.userData.buttonName;
 
+    const groupNumber =
+        hit.userData.groupNumber;
 
-    if (!buttonName) {
+
+    if (!buttonName && groupNumber === undefined) {
         return;
     }
 
@@ -3563,6 +3566,20 @@ function handleRemotePointer(event) {
     }
 
     resetRemoteSleepTimer();
+
+
+    if (groupNumber !== undefined) {
+
+        console.log(
+            "點擊群組標記：",
+            groupNumber
+        );
+
+        selectLightingGroup(groupNumber);
+        flashGroupLED();
+        return;
+
+    }
 
 
     console.log(
