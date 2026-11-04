@@ -51,25 +51,25 @@ renderer.toneMappingExposure = 0.1;
 
 
 // ======================================================
-// Camera
+// Camera 角度 跟座標
 // ======================================================
 
+const isMobile =
+    window.innerWidth <= 768;
+
 const camera = new THREE.PerspectiveCamera(
-    45,
+    isMobile ? 60 : 45,
     window.innerWidth / window.innerHeight,
     0.1,
     100
 );
-
-const isMobile =
-    window.innerWidth <= 768;
 
 const cameraZ =
     isMobile ? 3.0 : 0.9;
 
 // 手機俯視高度；0.8 約為 15 度，可調大或調小
 const cameraY =
-    isMobile ? 1.2 : 0;
+    isMobile ? 0.6: 0;
 
 const mobileCameraTiltCompensation =
     isMobile
@@ -180,17 +180,16 @@ if (rotateSpeedUI) {
         "input",
         (e) => {
 
-            settings.tiltAngle =
-                -Number(
+            const rotationX =
+                Number(
                     e.target.value
                 );
 
-            if (currentModel) {
+            if (additionalModel) {
 
-                currentModel.rotation.x =
-                    mobileCameraTiltCompensation +
+                additionalModel.rotation.x =
                     THREE.MathUtils.degToRad(
-                        settings.tiltAngle
+                        rotationX
                     );
 
             }
@@ -302,6 +301,7 @@ new EXRLoader()
 // ======================================================
 
 let currentModel = null;
+let additionalModel = null;
 
 
 // ======================================================
@@ -3946,18 +3946,21 @@ const initialModelPositions = {
             y: 0,
             z: -7
         }
+    // 手機版遙控器模型 Z軸 前後 Y高度
     },
     mobile: {
         original: {
             x: -0,
             y: -0.9,
-            z: -0.5,
+            z: 0,
             rotationY: 0
         },
+        // 手機版廠景模型 Z軸 前後 Y高度
+
         additional: {
             x: 0,
-            y: 0,
-            z: -10.5
+            y: 1.1,
+            z: -7.5
         }
     }
 };
@@ -4206,6 +4209,8 @@ function loadModel(
             );
 
             if (addToScene) {
+
+                additionalModel = newModel;
 
                 setupAdditionalModelLights(newModel);
 
