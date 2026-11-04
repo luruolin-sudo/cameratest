@@ -1079,26 +1079,49 @@ function createGroupLightMarker(model, lightNode, groupNumber) {
     lightNode.getWorldPosition(
         worldPosition
     );
-
+// 1~4 圓形座標 X 軸
     const markerOffsetX =
-        groupNumber === 4
-            ? -markerSize * 1.4
-            : isMobile
-                ? markerSize * 0.6
-                : markerSize * 0.8;
+        isMobile
+            ? (groupNumber === 1
+                ? markerSize * 0.4
+                : groupNumber === 2
+                    ? markerSize * 0.5
+                    : groupNumber === 3
+                        ? markerSize * 0.4
+                        : groupNumber === 4
+                            ? markerSize * 0.1
+                            : markerSize * 0.4)
+            : (groupNumber === 1
+                ? markerSize * 0.8
+                : groupNumber === 2
+                    ? markerSize * 0.8
+                    : groupNumber === 3
+                        ? markerSize * 0.8
+                        : groupNumber === 4
+                            ? -markerSize * 1.4
+                            : markerSize * 0.8);
 
+// 1~4 圓形座標 Y 軸
     const markerOffsetY =
         isMobile
-            ? (groupNumber === 2
-                ? markerSize * 1.0
-                : groupNumber === 4
-                    ? -markerSize * 0.05
-                    : markerSize * 0.7)
-            : (groupNumber === 2
-                ? markerSize * 1.05
-                : groupNumber === 4
-                    ? -markerSize * 0.2
-                    : markerSize * 0.8);
+            ? (groupNumber === 1
+                ? markerSize * 0.5
+                : groupNumber === 2
+                    ? markerSize * 0.4
+                    : groupNumber === 3
+                        ? markerSize * 0.4
+                        : groupNumber === 4
+                            ? -markerSize *0.25
+                            : markerSize * -0.5)
+            : (groupNumber === 1
+                ? markerSize * 0.8
+                : groupNumber === 2
+                    ? markerSize * 1.05
+                    : groupNumber === 3
+                        ? markerSize * 0.8
+                        : groupNumber === 4
+                            ? -markerSize * 0.2
+                            : markerSize * 0.8);
 
     worldPosition.add(
         new THREE.Vector3(
