@@ -3631,11 +3631,11 @@ renderer.domElement.addEventListener(
             if (hoveredSprite !== hit) {
 
                 if (hoveredSprite) {
-                    hoveredSprite.material.color.setHex(0xffffff);
+                    hoveredSprite.material.opacity = 1;
                 }
 
                 hoveredSprite = hit;
-                hoveredSprite.material.color.setHex(0x4ab4ea);
+                hoveredSprite.material.opacity = 0.7;
                 renderer.domElement.style.cursor = "pointer";
 
             }
@@ -3643,7 +3643,7 @@ renderer.domElement.addEventListener(
         } else {
 
             if (hoveredSprite) {
-                hoveredSprite.material.color.setHex(0xffffff);
+                hoveredSprite.material.opacity = 1;
                 hoveredSprite = null;
                 renderer.domElement.style.cursor = "default";
             }
