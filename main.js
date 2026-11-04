@@ -185,12 +185,31 @@ if (rotateSpeedUI) {
                     e.target.value
                 );
 
-            if (additionalModel) {
+            if (isMobile) {
 
-                additionalModel.rotation.x =
-                    THREE.MathUtils.degToRad(
-                        rotationX
-                    );
+                if (additionalModel) {
+
+                    additionalModel.rotation.x =
+                        THREE.MathUtils.degToRad(
+                            rotationX
+                        );
+
+                }
+
+            } else {
+
+                if (currentModel) {
+
+                    currentModel.rotation.x =
+                        mobileCameraTiltCompensation +
+                        THREE.MathUtils.degToRad(
+                            settings.tiltAngle
+                        ) +
+                        THREE.MathUtils.degToRad(
+                            rotationX
+                        );
+
+                }
 
             }
 
@@ -3549,6 +3568,9 @@ const raycaster =
 const pointer =
     new THREE.Vector2();
 
+let hoveredSprite = null;
+let hoveredSpriteBackground = null;
+
 
 // ======================================================
 // Pointer 位置
@@ -3575,6 +3597,61 @@ function updatePointer(event) {
         ) * 2 + 1;
 
 }
+
+
+// ======================================================
+// 滑鼠移動檢測懸停
+// ======================================================
+
+renderer.domElement.addEventListener(
+    "pointermove",
+    (event) => {
+
+        if (!currentModel) {
+            return;
+        }
+
+        updatePointer(event);
+
+        raycaster.setFromCamera(
+            pointer,
+            camera
+        );
+
+        const intersections =
+            raycaster.intersectObjects(
+                buttonLabelSprites,
+                false
+            );
+
+        if (intersections.length > 0) {
+
+            const hit = intersections[0].object;
+
+            if (hoveredSprite !== hit) {
+
+                if (hoveredSprite) {
+                    hoveredSprite.material.color.setHex(0xffffff);
+                }
+
+                hoveredSprite = hit;
+                hoveredSprite.material.color.setHex(0x4ab4ea);
+                renderer.domElement.style.cursor = "pointer";
+
+            }
+
+        } else {
+
+            if (hoveredSprite) {
+                hoveredSprite.material.color.setHex(0xffffff);
+                hoveredSprite = null;
+                renderer.domElement.style.cursor = "default";
+            }
+
+        }
+
+    }
+);
 
 
 // ======================================================
