@@ -3568,9 +3568,6 @@ const raycaster =
 const pointer =
     new THREE.Vector2();
 
-let hoveredSprite = null;
-let hoveredSpriteBackground = null;
-
 
 // ======================================================
 // Pointer 位置
@@ -3597,61 +3594,6 @@ function updatePointer(event) {
         ) * 2 + 1;
 
 }
-
-
-// ======================================================
-// 滑鼠移動檢測懸停
-// ======================================================
-
-renderer.domElement.addEventListener(
-    "pointermove",
-    (event) => {
-
-        if (!currentModel) {
-            return;
-        }
-
-        updatePointer(event);
-
-        raycaster.setFromCamera(
-            pointer,
-            camera
-        );
-
-        const intersections =
-            raycaster.intersectObjects(
-                buttonLabelSprites,
-                false
-            );
-
-        if (intersections.length > 0) {
-
-            const hit = intersections[0].object;
-
-            if (hoveredSprite !== hit) {
-
-                if (hoveredSprite) {
-                    hoveredSprite.material.opacity = 1;
-                }
-
-                hoveredSprite = hit;
-                hoveredSprite.material.opacity = 0.7;
-                renderer.domElement.style.cursor = "pointer";
-
-            }
-
-        } else {
-
-            if (hoveredSprite) {
-                hoveredSprite.material.opacity = 1;
-                hoveredSprite = null;
-                renderer.domElement.style.cursor = "default";
-            }
-
-        }
-
-    }
-);
 
 
 // ======================================================
